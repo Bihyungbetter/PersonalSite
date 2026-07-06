@@ -5,19 +5,16 @@
  * the whole card stays a plain link and wheel-scrolling never zooms.
  * The poster paints instantly; the shared Three.js chunk swaps it out.
  */
-import { tagClasses } from "@/lib/tags";
-
 interface Props {
   href: string;
   title: string;
   summary: string;
-  tags: string[];
   model?: string;
   poster?: string;
   up?: "y" | "z";
 }
 
-const { href, title, summary, tags, model, poster, up = "y" } = Astro.props;
+const { href, title, summary, model, poster, up = "y" } = Astro.props;
 ---
 
 <a href={href} class="group block h-full outline-none">
@@ -64,15 +61,6 @@ const { href, title, summary, tags, model, poster, up = "y" } = Astro.props;
         }
       </h3>
       <p class="line-clamp-2 text-sm text-muted-foreground">{summary}</p>
-      {
-        tags.length > 0 && (
-          <div class="mt-1 flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span class={tagClasses(tag)}>{tag}</span>
-            ))}
-          </div>
-        )
-      }
     </div>
   </div>
 </a>
