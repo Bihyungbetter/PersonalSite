@@ -132,6 +132,27 @@
     }
 }
 
+/* Blinking caret for the hero typewriter effect. */
+#typed {
+  min-height: 1lh;
+  display: inline-block;
+}
+#typed.typing::after {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 0.9em;
+  margin-left: 0.08em;
+  vertical-align: -0.08em;
+  background: currentColor;
+  animation: caret-blink 1.1s step-end infinite;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* Minimal typography for markdown project writeups (avoids a plugin dependency). */
 @layer components {
   .prose {

@@ -13,6 +13,8 @@ const projects = defineCollection({
     tools: z.array(z.string()).default([]),
     // Path under /public to a meshopt-compressed GLB, e.g. "/models/gearbox.glb"
     model: z.string().optional(),
+    // CAD exports are usually Z-up; glTF is Y-up. "z" stands the model upright.
+    up: z.enum(["y", "z"]).default("y"),
     // Path under /public to a WebP poster shown before the viewer loads
     poster: z.string().optional(),
     featured: z.boolean().default(false),

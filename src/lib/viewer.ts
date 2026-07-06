@@ -2,9 +2,10 @@
  * Lazy-loaded Three.js viewer for meshopt-compressed GLB models.
  *
  * Efficiency contract:
- * - This module (and three.js) is only fetched after user intent (see ModelViewer.astro).
- * - Render-on-demand: the rAF loop runs only while the camera is moving; an idle
- *   viewer costs zero CPU/GPU.
+ * - This module (and three.js) is a separate chunk fetched only on pages with a viewer
+ *   (see ModelViewer.astro); it is cached across all project pages.
+ * - The rAF loop runs only while the model is auto-rotating **and on screen**, or while
+ *   the camera is moving. Offscreen or after interaction settles: zero CPU/GPU.
  * - Pixel ratio capped at 2; renderer disposed on pagehide.
  */
 import {
@@ -60,12 +61,20 @@ export function createViewer(container: HTMLElement): void {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
+  // Turntable spin until the visitor grabs the model.
+  controls.autoRotate = !captureMode;
+  controls.autoRotateSpeed = 1.2;
 
   // --- Render on demand: run the loop only while something is changing. ---
   let rafId = 0;
   let running = false;
   let settled = 0;
+  let inView = true;
   function frame() {
+    if (!inView) {
+      running = false;
+      return;
+    }
     const moved = controls.update();
     renderer.render(scene, camera);
     settled = moved ? 0 : settled + 1;
@@ -77,7 +86,7 @@ export function createViewer(container: HTMLElement): void {
   }
   function wake() {
     settled = 0;
-    if (!running) {
+    if (!running && inView) {
       running = true;
       rafId = requestAnimationFrame(frame);
     }
@@ -85,6 +94,7 @@ export function createViewer(container: HTMLElement): void {
   let pointerDown = false;
   controls.addEventListener("start", () => {
     pointerDown = true;
+    controls.autoRotate = false;
     wake();
   });
   controls.addEventListener("end", () => {
@@ -92,6 +102,13 @@ export function createViewer(container: HTMLElement): void {
     wake();
   });
   controls.addEventListener("change", wake);
+
+  // Pause the spin (and all rendering) while the viewer is scrolled offscreen.
+  const viewObserver = new IntersectionObserver(([entry]) => {
+    inView = entry.isIntersecting;
+    if (inView) wake();
+  });
+  viewObserver.observe(container);
 
   const resizeObserver = new ResizeObserver(() => {
     const { clientWidth: w, clientHeight: h } = container;
@@ -113,7 +130,7 @@ export function createViewer(container: HTMLElement): void {
     const dist = maxDim / (2 * Math.tan((camera.fov * Math.PI) / 360));
     camera.position
       .copy(center)
-      .add(new Vector3(1, 0.6, 1).normalize().multiplyScalar(dist * (captureMode ? 1.05 : 1.4)));
+      .add(new Vector3(1, 0.6, 1).normalize().multiplyScalar(dist * (captureMode ? 1.05 : 1.15)));
     camera.near = maxDim / 100;
     camera.far = dist * 20;
     camera.updateProjectionMatrix();
@@ -131,6 +148,8 @@ export function createViewer(container: HTMLElement): void {
   loader.load(
     src,
     (gltf) => {
+      // STEP/CAD exports are usually Z-up; glTF is Y-up. `data-up="z"` stands them upright.
+      if (container.dataset.up === "z") gltf.scene.rotation.x = -Math.PI / 2;
       scene.add(gltf.scene);
       frameModel(gltf.scene);
       posterEl?.remove();
@@ -171,6 +190,7 @@ export function createViewer(container: HTMLElement): void {
   window.addEventListener("pagehide", () => {
     cancelAnimationFrame(rafId);
     resizeObserver.disconnect();
+    viewObserver.disconnect();
     controls.dispose();
     scene.environment?.dispose();
     scene.traverse((obj) => {

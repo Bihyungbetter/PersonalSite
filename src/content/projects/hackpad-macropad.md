@@ -6,6 +6,7 @@ tags: [hardware, electronics, pcb, keyboards]
 tools: [Fusion 360, KiCad]
 model: /models/hackpad-macropad.glb
 poster: /posters/hackpad-macropad.webp
+up: z
 featured: true
 specs:
   - { label: Switches, value: "MX-style, plate mount" }

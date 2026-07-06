@@ -1,22 +1,25 @@
 ---
 /**
- * Two-stage 3D viewer island.
- * Stage 1 (this markup): a static poster/placeholder — zero JS cost.
- * Stage 2: the small script below lazy-imports the Three.js viewer on tap,
- * or automatically when scrolled into view on fast connections.
+ * 3D viewer island. The poster/placeholder paints instantly as static HTML;
+ * the small script below then lazy-imports the Three.js viewer chunk right
+ * away, which replaces the poster once the model is ready and auto-rotates
+ * until the visitor grabs it.
  */
 interface Props {
   src: string;
   poster?: string;
   alt?: string;
+  /** CAD exports are usually Z-up; glTF is Y-up. Set "z" to stand the model upright. */
+  up?: "y" | "z";
 }
 
-const { src, poster, alt = "3D model preview" } = Astro.props;
+const { src, poster, alt = "3D model preview", up = "y" } = Astro.props;
 ---
 
 <div
   class="model-viewer group relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 select-none sm:aspect-[16/9]"
   data-model-src={src}
+  data-up={up}
 >
   <div data-viewer-poster class="absolute inset-0">
     {
@@ -29,34 +32,6 @@ const { src, poster, alt = "3D model preview" } = Astro.props;
         />
       )
     }
-    <button
-      type="button"
-      data-viewer-load
-      class="absolute inset-0 flex h-full w-full cursor-pointer flex-col items-center justify-center gap-3 bg-background/40 transition-colors hover:bg-background/20"
-    >
-      <span
-        class="flex items-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2 text-sm font-medium shadow-sm"
-      >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
-          ></path>
-          <path d="m3.3 7 8.7 5 8.7-5"></path>
-          <path d="M12 22V12"></path>
-        </svg>
-        View in 3D
-      </span>
-      <span class="text-xs text-muted-foreground">Drag to orbit · scroll to zoom</span>
-    </button>
   </div>
 
   <div
@@ -73,57 +48,31 @@ const { src, poster, alt = "3D model preview" } = Astro.props;
     </div>
   </div>
 
-  <div data-viewer-controls hidden class="absolute right-2 bottom-2 z-10 flex gap-1.5">
-    <button
-      type="button"
-      data-viewer-reset
-      class="rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
-    >
-      Reset view
-    </button>
-    <button
-      type="button"
-      data-viewer-fullscreen
-      class="rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
-    >
-      Fullscreen
-    </button>
+  <div data-viewer-controls hidden class="absolute inset-x-2 bottom-2 z-10 flex items-end justify-between gap-2">
+    <span class="px-1 text-xs text-muted-foreground/80">Drag to orbit · scroll to zoom</span>
+    <div class="flex gap-1.5">
+      <button
+        type="button"
+        data-viewer-reset
+        class="rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
+      >
+        Reset view
+      </button>
+      <button
+        type="button"
+        data-viewer-fullscreen
+        class="rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
+      >
+        Fullscreen
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
-  const containers = document.querySelectorAll<HTMLElement>("[data-model-src]");
-
-  for (const container of containers) {
-    let loaded = false;
-    const load = async () => {
-      if (loaded) return;
-      loaded = true;
-      const { createViewer } = await import("@/lib/viewer");
-      createViewer(container);
-    };
-
-    container.querySelector("[data-viewer-load]")?.addEventListener("click", load);
-
-    // Auto-load when scrolled into view, but only on fast connections that
-    // haven't asked to save data. On slow/metered networks the user taps.
-    const connection = (
-      navigator as Navigator & {
-        connection?: { effectiveType?: string; saveData?: boolean };
-      }
-    ).connection;
-    const fast =
-      !connection || (connection.effectiveType === "4g" && !connection.saveData);
-    if (fast) {
-      new IntersectionObserver(
-        (entries, observer) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            observer.disconnect();
-            load();
-          }
-        },
-        { rootMargin: "80px" },
-      ).observe(container);
-    }
+  // Load the viewer immediately — the poster keeps the page painting fast while
+  // the (cached, code-split) Three.js chunk and model stream in.
+  for (const container of document.querySelectorAll<HTMLElement>("[data-model-src]")) {
+    import("@/lib/viewer").then(({ createViewer }) => createViewer(container));
   }
 </script>

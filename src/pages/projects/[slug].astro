@@ -51,7 +51,12 @@ const formattedDate = data.date.toLocaleDateString("en-US", {
     {
       data.model && (
         <div class="mt-8">
-          <ModelViewer src={data.model} poster={data.poster} alt={`${data.title} 3D model`} />
+          <ModelViewer
+            src={data.model}
+            poster={data.poster}
+            up={data.up}
+            alt={`${data.title} 3D model`}
+          />
         </div>
       )
     }

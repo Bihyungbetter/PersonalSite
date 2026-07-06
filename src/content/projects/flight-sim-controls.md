@@ -6,6 +6,7 @@ tags: [hardware, cad, flight-sim, force-feedback]
 tools: [Fusion 360]
 model: /models/flight-sim-controls.glb
 poster: /posters/flight-sim-controls.webp
+up: z
 featured: true
 specs:
   - { label: Motor, value: "GB54-2 gimbal motor" }
