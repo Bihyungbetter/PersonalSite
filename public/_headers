@@ -1,0 +1,8 @@
+# Cloudflare Pages cache rules.
+# Models and hashed build assets never change at the same URL — cache forever.
+/models/*
+  Cache-Control: public, max-age=31536000, immutable
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+/posters/*
+  Cache-Control: public, max-age=604800

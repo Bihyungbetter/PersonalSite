@@ -1,0 +1,105 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import ModelViewer from "@/components/ModelViewer.astro";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+export async function getStaticPaths() {
+  const projects = await getCollection("projects");
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { data } = project;
+const { Content } = await render(project);
+
+const formattedDate = data.date.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+});
+---
+
+<Base title={data.title} description={data.summary}>
+  <article class="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <a
+      href="/#projects"
+      class="text-sm text-muted-foreground transition-colors hover:text-foreground"
+    >
+      ← All projects
+    </a>
+
+    <header class="mt-6">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h1 class="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          {data.title}
+        </h1>
+      </div>
+      <p class="mt-3 max-w-2xl text-lg text-muted-foreground">{data.summary}</p>
+      <div class="mt-4 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+        <time datetime={data.date.toISOString()}>{formattedDate}</time>
+        <span aria-hidden="true" class="mx-1">·</span>
+        {data.tools.map((tool) => <Badge variant="outline">{tool}</Badge>)}
+        {data.tags.map((tag) => <Badge variant="secondary">{tag}</Badge>)}
+      </div>
+    </header>
+
+    {
+      data.model && (
+        <div class="mt-8">
+          <ModelViewer src={data.model} poster={data.poster} alt={`${data.title} 3D model`} />
+        </div>
+      )
+    }
+
+    <div class="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_260px]">
+      <div class="prose max-w-none">
+        <Content />
+      </div>
+
+      {
+        (data.specs.length > 0 || data.links.length > 0) && (
+          <aside class="order-first lg:order-none">
+            <div class="rounded-xl bg-card p-5 ring-1 ring-foreground/10 lg:sticky lg:top-20">
+              {data.specs.length > 0 && (
+                <>
+                  <h2 class="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Specs
+                  </h2>
+                  <dl class="mt-3 space-y-3 text-sm">
+                    {data.specs.map(({ label, value }) => (
+                      <div>
+                        <dt class="text-muted-foreground">{label}</dt>
+                        <dd class="mt-0.5 font-medium">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              )}
+              {data.specs.length > 0 && data.links.length > 0 && (
+                <Separator className="my-4" />
+              )}
+              {data.links.length > 0 && (
+                <div class="flex flex-col gap-2">
+                  {data.links.map(({ label, url }) => (
+                    <a
+                      href={url}
+                      rel="noopener"
+                      class={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+        )
+      }
+    </div>
+  </article>
+</Base>

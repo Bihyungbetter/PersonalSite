@@ -1,0 +1,37 @@
+---
+import { site } from "@/lib/site";
+
+const links = [
+  { href: "/#about", label: "About" },
+  { href: "/#projects", label: "Projects" },
+  { href: "/#contact", label: "Contact" },
+];
+---
+
+<header class="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
+  <div class="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+    <a href="/" class="text-sm font-semibold tracking-tight sm:text-base">{site.name}</a>
+    <nav aria-label="Main" class="flex items-center gap-1 text-sm sm:gap-2">
+      {
+        links.map(({ href, label }) => (
+          <a
+            href={href}
+            class="rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:text-foreground sm:px-3"
+          >
+            {label}
+          </a>
+        ))
+      }
+      {
+        site.resume && (
+          <a
+            href={site.resume}
+            class="ml-1 rounded-md border border-border px-3 py-1.5 font-medium transition-colors hover:bg-muted"
+          >
+            Resume
+          </a>
+        )
+      }
+    </nav>
+  </div>
+</header>
