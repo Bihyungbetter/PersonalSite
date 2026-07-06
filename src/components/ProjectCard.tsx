@@ -14,7 +14,7 @@ interface Props {
 export function ProjectCard({ href, title, summary, tags, poster, hasModel }: Props) {
   return (
     <a href={href} className="group block h-full outline-none">
-      <Card className="h-full gap-3 transition-all group-hover:ring-foreground/25 group-focus-visible:ring-2 group-focus-visible:ring-ring">
+      <Card className="h-full gap-3 transition-all group-hover:ring-brand/60 group-focus-visible:ring-2 group-focus-visible:ring-ring">
         {poster ? (
           <img
             src={poster}

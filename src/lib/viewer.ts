@@ -61,9 +61,9 @@ export function createViewer(container: HTMLElement): void {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  // Turntable spin until the visitor grabs the model.
+  // Turntable spin until the visitor grabs the model (~15s per revolution).
   controls.autoRotate = !captureMode;
-  controls.autoRotateSpeed = 1.2;
+  controls.autoRotateSpeed = 4;
 
   // --- Render on demand: run the loop only while something is changing. ---
   let rafId = 0;

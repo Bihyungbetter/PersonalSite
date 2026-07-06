@@ -2,6 +2,7 @@
 import "@/styles/global.css";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
+import Cursor from "@/components/Cursor.astro";
 import { site } from "@/lib/site";
 
 interface Props {
@@ -24,6 +25,7 @@ const pageTitle = title ? `${title} · ${site.name}` : site.name;
     <title>{pageTitle}</title>
   </head>
   <body class="flex min-h-dvh flex-col antialiased">
+    <Cursor />
     <Header />
     <main class="flex-1">
       <slot />

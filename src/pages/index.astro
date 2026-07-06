@@ -15,46 +15,134 @@ const projects = (await getCollection("projects")).sort(
     Number(b.data.featured) - Number(a.data.featured) ||
     b.data.date.valueOf() - a.data.date.valueOf(),
 );
+
+// Roles cycled by the hero typewriter.
+const roles = ["biped robots", "flight sim hardware", "custom macropads", "things that move"];
 ---
 
 <Base>
   <!-- Hero -->
-  <section class="mx-auto w-full max-w-5xl px-4 pt-20 pb-16 sm:px-6 sm:pt-28">
-    <p class="font-mono text-sm text-muted-foreground">{site.role}</p>
-    <h1 class="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-      <span id="typed">Hi, I'm {site.name}.</span>
-    </h1>
-    <script is:inline>
-      // Typewriter effect for the hero heading. The full text is in the HTML
-      // (SEO / no-JS safe); this just replays it. Respects reduced motion.
-      (() => {
-        const el = document.getElementById("typed");
-        if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        const text = el.textContent;
-        el.textContent = "";
-        el.classList.add("typing");
-        let i = 0;
-        const tick = () => {
-          el.textContent = text.slice(0, ++i);
-          if (i < text.length) setTimeout(tick, 60);
-          else setTimeout(() => el.classList.remove("typing"), 1200);
-        };
-        setTimeout(tick, 300);
-      })();
-    </script>
-    <p class="mt-4 max-w-xl text-lg text-muted-foreground">{site.tagline}</p>
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a href="#projects" class={buttonVariants()}>View projects</a>
-      <a href={`mailto:${site.email}`} class={buttonVariants({ variant: "outline" })}>
-        <Mail />
-        Get in touch
-      </a>
+  <section class="relative overflow-hidden">
+    <!-- Engineering-grid backdrop: fine + major CAD gridlines, pure CSS, zero JS -->
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 -z-10 [mask-image:radial-gradient(ellipse_85%_90%_at_50%_0%,black,transparent_78%)]"
+    >
+      <div
+        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-foreground/5%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-foreground/5%)_1px,transparent_1px)] [background-size:24px_24px]"
+      >
+      </div>
+      <div
+        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-foreground/8%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-foreground/8%)_1px,transparent_1px)] [background-size:120px_120px]"
+      >
+      </div>
+      <div
+        class="absolute inset-0 [background:radial-gradient(ellipse_55%_45%_at_72%_-10%,--theme(--color-brand/9%),transparent)]"
+      >
+      </div>
+    </div>
+
+    <div class="mx-auto w-full max-w-5xl px-4 pt-24 pb-20 sm:px-6 sm:pt-36 sm:pb-28">
+      <p class="font-mono text-sm tracking-widest text-muted-foreground uppercase">
+        {site.role}
+      </p>
+      <h1 class="mt-3 text-5xl font-bold tracking-tight text-balance sm:text-7xl">
+        {site.name}
+      </h1>
+      <p class="mt-5 font-mono text-lg sm:text-xl">
+        <span class="text-muted-foreground">designing&nbsp;</span><span id="typed" class="text-brand"
+          >{roles[0]}</span
+        >
+      </p>
+      <script is:inline define:vars={{ roles }}>
+        // Cycle through roles with a typewriter effect (reduced-motion safe:
+        // the first role is already in the static HTML).
+        (() => {
+          const el = document.getElementById("typed");
+          if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          let word = 0;
+          let len = el.textContent.length;
+          // The first word is fully typed in the static HTML, so begin by deleting it.
+          let deleting = true;
+          const tick = () => {
+            const text = roles[word];
+            len += deleting ? -1 : 1;
+            el.textContent = text.slice(0, len);
+            let delay = deleting ? 45 : 75;
+            if (!deleting && len === text.length) {
+              delay = 2200;
+              deleting = true;
+            } else if (deleting && len === 0) {
+              deleting = false;
+              word = (word + 1) % roles.length;
+              delay = 350;
+            }
+            setTimeout(tick, delay);
+          };
+          setTimeout(tick, 2200);
+        })();
+      </script>
+      <div class="mt-8 flex items-center gap-1">
+        {
+          site.github && (
+            <a
+              href={site.github}
+              rel="noopener"
+              aria-label="GitHub"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <GitHub class="size-5" />
+            </a>
+          )
+        }
+        {
+          site.linkedin && (
+            <a
+              href={site.linkedin}
+              rel="noopener"
+              aria-label="LinkedIn"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LinkedIn class="size-5" />
+            </a>
+          )
+        }
+        <a
+          href={`mailto:${site.email}`}
+          aria-label="Email"
+          class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Mail class="size-5" />
+        </a>
+        {
+          site.resume && (
+            <a
+              href={site.resume}
+              aria-label="Resume"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <FileText class="size-5" />
+            </a>
+          )
+        }
+      </div>
+      <div class="mt-10 flex flex-wrap gap-3">
+        <a href="#projects" class={buttonVariants()}>View projects</a>
+        <a href={`mailto:${site.email}`} class={buttonVariants({ variant: "outline" })}>
+          <Mail />
+          Get in touch
+        </a>
+      </div>
     </div>
   </section>
 
   <!-- About -->
   <section id="about" class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-    <h2 class="text-sm font-semibold tracking-widest text-muted-foreground uppercase">About</h2>
+    <h2
+      class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
+    >
+      <span aria-hidden="true" class="h-px w-8 bg-brand"></span>About
+    </h2>
     <div class="mt-4 max-w-2xl space-y-4 leading-7 text-foreground/90">
       <p>
         I spend most of my time designing mechanisms and hardware — from robotics
@@ -73,8 +161,10 @@ const projects = (await getCollection("projects")).sort(
 
   <!-- Projects -->
   <section id="projects" class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-    <h2 class="text-sm font-semibold tracking-widest text-muted-foreground uppercase">
-      Projects
+    <h2
+      class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
+    >
+      <span aria-hidden="true" class="h-px w-8 bg-brand"></span>Projects
     </h2>
     <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {
@@ -96,8 +186,10 @@ const projects = (await getCollection("projects")).sort(
 
   <!-- Contact -->
   <section id="contact" class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
-    <h2 class="text-sm font-semibold tracking-widest text-muted-foreground uppercase">
-      Contact
+    <h2
+      class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
+    >
+      <span aria-hidden="true" class="h-px w-8 bg-brand"></span>Contact
     </h2>
     <p class="mt-4 max-w-xl text-lg">
       Want to talk hardware, or have a project in mind? My inbox is open.

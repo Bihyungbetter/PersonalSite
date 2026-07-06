@@ -1,0 +1,118 @@
+---
+/**
+ * Smooth cursor: an arrow that chases the pointer with a spring, tilts
+ * toward the direction of travel, and swells over links.
+ * Vanilla JS (~1 KB), fine-pointer devices only, respects reduced motion,
+ * and the rAF loop stops whenever the cursor settles — zero idle cost.
+ */
+---
+
+<div id="cursor" aria-hidden="true">
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    style="display:block; transform-origin: 50% 50%;"
+  >
+    <path
+      d="M12 2 L19.5 21 L12 16.8 L4.5 21 Z"
+      fill="var(--foreground)"
+      stroke="var(--background)"
+      stroke-width="1.5"
+      stroke-linejoin="round"></path>
+  </svg>
+</div>
+
+<script>
+  (() => {
+    if (
+      !matchMedia("(hover: hover) and (pointer: fine)").matches ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+
+    const el = document.getElementById("cursor");
+    const svg = el?.querySelector("svg");
+    if (!el || !svg) return;
+
+    let tx = -100,
+      ty = -100,
+      x = tx,
+      y = ty,
+      px = tx,
+      py = ty,
+      rot = 0,
+      targetRot = 0,
+      scale = 1,
+      targetScale = 1,
+      running = false,
+      rafId = 0,
+      shown = false;
+
+    function frame() {
+      x += (tx - x) * 0.22;
+      y += (ty - y) * 0.22;
+      const vx = x - px,
+        vy = y - py;
+      px = x;
+      py = y;
+      const speed = Math.hypot(vx, vy);
+      // Tilt toward travel direction while moving; ease upright when slow.
+      if (speed > 2.5) targetRot = (Math.atan2(vy, vx) * 180) / Math.PI + 90;
+      else targetRot = 0;
+      const dr = ((targetRot - rot + 540) % 360) - 180;
+      rot += dr * 0.16;
+      scale += (targetScale - scale) * 0.2;
+
+      el.style.transform = `translate(${x - 11}px, ${y - 11}px)`;
+      svg.style.transform = `rotate(${rot}deg) scale(${scale})`;
+
+      const settled =
+        Math.abs(tx - x) < 0.2 && speed < 0.2 && Math.abs(dr) < 0.3 &&
+        Math.abs(targetScale - scale) < 0.01;
+      if (settled) {
+        running = false;
+        return;
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    function wake() {
+      if (!running) {
+        running = true;
+        rafId = requestAnimationFrame(frame);
+      }
+    }
+
+    window.addEventListener(
+      "mousemove",
+      (e) => {
+        tx = e.clientX;
+        ty = e.clientY;
+        if (!shown) {
+          shown = true;
+          x = px = tx;
+          y = py = ty;
+          document.documentElement.classList.add("custom-cursor");
+        }
+        targetScale = e.target instanceof Element && e.target.closest("a, button, [role=button]")
+          ? 1.4
+          : 1;
+        wake();
+      },
+      { passive: true },
+    );
+    window.addEventListener("mousedown", () => {
+      targetScale = 0.8;
+      wake();
+    });
+    window.addEventListener("mouseup", () => {
+      targetScale = 1;
+      wake();
+    });
+    document.documentElement.addEventListener("mouseleave", () => {
+      document.documentElement.classList.remove("custom-cursor");
+      shown = false;
+    });
+    window.addEventListener("pagehide", () => cancelAnimationFrame(rafId));
+  })();
+</script>
