@@ -6,7 +6,7 @@ export const site = {
     "I design and build physical things — CAD models, electronics, and the hardware that ties them together.",
   email: "michaellu2027@gmail.com",
   github: "https://github.com/Bihyungbetter",
-  linkedin: "", // TODO: paste your LinkedIn profile URL, e.g. "https://www.linkedin.com/in/..."
+  linkedin: "https://www.linkedin.com/in/michael-lu-4060712b3/",
   resume: "/resume.pdf",
   description:
     "Personal portfolio of CAD and hardware projects, with interactive 3D viewers.",

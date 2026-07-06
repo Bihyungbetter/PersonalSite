@@ -1,17 +1,37 @@
 ---
+import GitHub from "@/components/icons/GitHub.astro";
+import LinkedIn from "@/components/icons/LinkedIn.astro";
+import Mail from "@/components/icons/Mail.astro";
 import { site } from "@/lib/site";
 const year = new Date().getFullYear();
+
+const iconLink =
+  "rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
 ---
 
 <footer class="border-t border-border/60">
   <div
-    class="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:px-6"
+    class="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-muted-foreground sm:flex-row sm:px-6"
   >
     <p>© {year} {site.name}</p>
-    <p>
-      <a href={`mailto:${site.email}`} class="transition-colors hover:text-foreground">
-        {site.email}
+    <div class="flex items-center gap-1">
+      {
+        site.github && (
+          <a href={site.github} rel="noopener" aria-label="GitHub" class={iconLink}>
+            <GitHub />
+          </a>
+        )
+      }
+      {
+        site.linkedin && (
+          <a href={site.linkedin} rel="noopener" aria-label="LinkedIn" class={iconLink}>
+            <LinkedIn />
+          </a>
+        )
+      }
+      <a href={`mailto:${site.email}`} aria-label="Email" class={iconLink}>
+        <Mail />
       </a>
-    </p>
+    </div>
   </div>
 </footer>

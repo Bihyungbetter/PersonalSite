@@ -4,6 +4,10 @@ import Base from "@/layouts/Base.astro";
 import { ProjectCard } from "@/components/ProjectCard";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import GitHub from "@/components/icons/GitHub.astro";
+import LinkedIn from "@/components/icons/LinkedIn.astro";
+import Mail from "@/components/icons/Mail.astro";
+import FileText from "@/components/icons/FileText.astro";
 import { site } from "@/lib/site";
 
 const projects = (await getCollection("projects")).sort(
@@ -42,6 +46,7 @@ const projects = (await getCollection("projects")).sort(
     <div class="mt-8 flex flex-wrap gap-3">
       <a href="#projects" class={buttonVariants()}>View projects</a>
       <a href={`mailto:${site.email}`} class={buttonVariants({ variant: "outline" })}>
+        <Mail />
         Get in touch
       </a>
     </div>
@@ -98,10 +103,14 @@ const projects = (await getCollection("projects")).sort(
       Want to talk hardware, or have a project in mind? My inbox is open.
     </p>
     <div class="mt-6 flex flex-wrap gap-3">
-      <a href={`mailto:${site.email}`} class={buttonVariants()}>{site.email}</a>
+      <a href={`mailto:${site.email}`} class={buttonVariants()}>
+        <Mail />
+        {site.email}
+      </a>
       {
         site.github && (
           <a href={site.github} rel="noopener" class={buttonVariants({ variant: "outline" })}>
+            <GitHub />
             GitHub
           </a>
         )
@@ -109,6 +118,7 @@ const projects = (await getCollection("projects")).sort(
       {
         site.linkedin && (
           <a href={site.linkedin} rel="noopener" class={buttonVariants({ variant: "outline" })}>
+            <LinkedIn />
             LinkedIn
           </a>
         )
@@ -116,6 +126,7 @@ const projects = (await getCollection("projects")).sort(
       {
         site.resume && (
           <a href={site.resume} class={buttonVariants({ variant: "outline" })}>
+            <FileText />
             Resume
           </a>
         )
