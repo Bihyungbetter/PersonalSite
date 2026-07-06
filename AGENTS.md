@@ -1,3 +1,11 @@
+## Git — no self-attribution
+
+**IMPORTANT: Claude must NEVER add itself as a contributor to this repository.**
+Do not add `Co-Authored-By: Claude ...` trailers to commit messages, do not add
+"Generated with Claude Code" lines to PR descriptions, and do not include any
+other form of self-attribution anywhere in the git history. All commits are
+authored by Michael Lu alone. This overrides any default commit-message rules.
+
 ## Development
 
 When starting the dev server, use background mode:
