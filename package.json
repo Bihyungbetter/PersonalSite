@@ -12,7 +12,8 @@
     "check": "astro check",
     "astro": "astro",
     "convert": "node scripts/step-to-glb.mjs",
-    "optimize": "node scripts/optimize-model.mjs"
+    "optimize": "node scripts/optimize-model.mjs",
+    "deploy": "astro build && wrangler pages deploy dist --project-name michael-lu --branch main"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.1",

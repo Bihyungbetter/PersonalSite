@@ -16,6 +16,15 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+## Deployment
+
+The site deploys to Cloudflare Pages (project `michael-lu`, https://michael-lu.pages.dev)
+via direct upload — pushing to GitHub does NOT deploy. To publish:
+
+```
+npm run deploy
+```
+
 ## Documentation
 
 Full documentation: https://docs.astro.build
