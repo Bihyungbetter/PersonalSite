@@ -1,26 +1,14 @@
 ---
 /**
- * CAD crosshair cursor: a hairline reticle with an amber center dot chases
- * the pointer, and corner brackets snap around links/buttons like a CAD
- * selection box. Vanilla JS, fine-pointer devices only, respects reduced
- * motion, and the rAF loop stops whenever the reticle settles.
+ * Dot + ring cursor: a small amber dot tracks the pointer exactly while a
+ * springy ring trails behind and expands around links/buttons. Vanilla JS,
+ * fine-pointer devices only, respects reduced motion, and the rAF loop
+ * stops whenever the ring settles.
  */
 ---
 
-<div id="cursor" aria-hidden="true">
-  <svg width="44" height="44" viewBox="0 0 44 44" style="display:block">
-    <g stroke="var(--muted-foreground)" stroke-opacity="0.55" stroke-width="1">
-      <line x1="22" y1="0" x2="22" y2="15"></line>
-      <line x1="22" y1="29" x2="22" y2="44"></line>
-      <line x1="0" y1="22" x2="15" y2="22"></line>
-      <line x1="29" y1="22" x2="44" y2="22"></line>
-    </g>
-    <circle cx="22" cy="22" r="2.5" fill="var(--brand)"></circle>
-  </svg>
-</div>
-<div id="cursor-brackets" aria-hidden="true">
-  <i></i><i></i><i></i><i></i>
-</div>
+<div id="cursor-dot" aria-hidden="true"></div>
+<div id="cursor-ring" aria-hidden="true"></div>
 
 <script>
   (() => {
@@ -30,10 +18,9 @@
     )
       return;
 
-    const el = document.getElementById("cursor");
-    const svg = el?.querySelector("svg");
-    const brackets = document.getElementById("cursor-brackets");
-    if (!el || !svg || !brackets) return;
+    const dot = document.getElementById("cursor-dot");
+    const ring = document.getElementById("cursor-ring");
+    if (!dot || !ring) return;
 
     let tx = -100,
       ty = -100,
@@ -44,15 +31,14 @@
       running = false,
       rafId = 0,
       shown = false;
-    let target: Element | null = null;
 
     function frame() {
-      x += (tx - x) * 0.3;
-      y += (ty - y) * 0.3;
+      x += (tx - x) * 0.22;
+      y += (ty - y) * 0.22;
       scale += (targetScale - scale) * 0.25;
-      el!.style.transform = `translate(${x - 22}px, ${y - 22}px)`;
-      svg!.style.transform = `scale(${scale})`;
-      const settled = Math.abs(tx - x) < 0.2 && Math.abs(ty - y) < 0.2 &&
+      ring!.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      const settled =
+        Math.abs(tx - x) < 0.2 && Math.abs(ty - y) < 0.2 &&
         Math.abs(targetScale - scale) < 0.01;
       if (settled) {
         running = false;
@@ -67,21 +53,12 @@
       }
     }
 
-    function frameBrackets() {
-      if (!target || !target.isConnected) return;
-      const pad = 6;
-      const r = target.getBoundingClientRect();
-      brackets!.style.left = `${r.left - pad}px`;
-      brackets!.style.top = `${r.top - pad}px`;
-      brackets!.style.width = `${r.width + pad * 2}px`;
-      brackets!.style.height = `${r.height + pad * 2}px`;
-    }
-
     window.addEventListener(
       "mousemove",
       (e) => {
         tx = e.clientX;
         ty = e.clientY;
+        dot.style.transform = `translate(${tx}px, ${ty}px)`;
         if (!shown) {
           shown = true;
           x = tx;
@@ -94,31 +71,34 @@
     );
     document.addEventListener("mouseover", (e) => {
       const t = e.target instanceof Element && e.target.closest("a, button, [role=button]");
-      if (t === target) return;
-      target = t || null;
-      if (target) {
-        frameBrackets();
-        brackets.classList.add("on");
-      } else {
-        brackets.classList.remove("on");
-      }
+      ring.classList.toggle("link", !!t);
     });
-    // Keep brackets glued to the hovered element while the page scrolls.
-    window.addEventListener("scroll", () => target && frameBrackets(), { passive: true });
     window.addEventListener("mousedown", () => {
-      targetScale = 0.8;
+      targetScale = 0.85;
       wake();
     });
     window.addEventListener("mouseup", () => {
       targetScale = 1;
       wake();
     });
-    document.documentElement.addEventListener("mouseleave", () => {
+
+    const reset = () => {
       document.documentElement.classList.remove("custom-cursor");
-      brackets.classList.remove("on");
-      target = null;
+      ring.classList.remove("link");
+      targetScale = 1;
+      scale = 1;
       shown = false;
+    };
+    document.documentElement.addEventListener("mouseleave", reset);
+    // Navigating away (e.g. opening the resume PDF) and coming back via the
+    // back button restores this page from the bfcache with all cursor state
+    // intact — clear it on both pagehide and pageshow so nothing is left
+    // stuck on screen until the next mousemove.
+    window.addEventListener("pagehide", () => {
+      reset();
+      cancelAnimationFrame(rafId);
+      running = false;
     });
-    window.addEventListener("pagehide", () => cancelAnimationFrame(rafId));
+    window.addEventListener("pageshow", reset);
   })();
 </script>

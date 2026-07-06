@@ -29,19 +29,19 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
       class="absolute inset-0 -z-10 [mask-image:radial-gradient(ellipse_85%_90%_at_50%_0%,black,transparent_78%)]"
     >
       <div
-        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-foreground/5%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-foreground/5%)_1px,transparent_1px)] [background-size:24px_24px]"
+        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-foreground/7%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-foreground/7%)_1px,transparent_1px)] [background-size:24px_24px]"
       >
       </div>
       <div
-        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-foreground/8%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-foreground/8%)_1px,transparent_1px)] [background-size:120px_120px]"
+        class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-brand2/12%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-brand2/12%)_1px,transparent_1px)] [background-size:120px_120px]"
       >
       </div>
       <div
-        class="absolute inset-0 [background:radial-gradient(ellipse_55%_45%_at_72%_-10%,--theme(--color-brand/9%),transparent)]"
+        class="absolute inset-0 [background:radial-gradient(ellipse_55%_45%_at_72%_-10%,--theme(--color-brand/20%),transparent)]"
       >
       </div>
       <div
-        class="absolute inset-0 [background:radial-gradient(ellipse_45%_40%_at_10%_-10%,--theme(--color-brand2/8%),transparent)]"
+        class="absolute inset-0 [background:radial-gradient(ellipse_45%_42%_at_10%_-10%,--theme(--color-brand2/16%),transparent)]"
       >
       </div>
     </div>
@@ -50,7 +50,9 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
       <p class="font-mono text-sm tracking-widest text-muted-foreground uppercase">
         {site.role}
       </p>
-      <h1 class="mt-3 text-5xl font-bold tracking-tight text-balance sm:text-7xl">
+      <h1
+        class="mt-3 w-fit bg-gradient-to-r from-brand via-[#ef8d64] to-brand2 bg-clip-text text-5xl font-bold tracking-tight text-balance text-transparent sm:text-7xl"
+      >
         {site.name}
       </h1>
       <p class="mt-5 font-mono text-lg sm:text-xl">
@@ -93,7 +95,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
               href={site.github}
               rel="noopener"
               aria-label="GitHub"
-              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-violet-400/10 hover:text-violet-300"
             >
               <GitHub class="size-5" />
             </a>
@@ -105,7 +107,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
               href={site.linkedin}
               rel="noopener"
               aria-label="LinkedIn"
-              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-sky-400/10 hover:text-sky-300"
             >
               <LinkedIn class="size-5" />
             </a>
@@ -114,7 +116,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
         <a
           href={`mailto:${site.email}`}
           aria-label="Email"
-          class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-brand2/10 hover:text-brand2"
         >
           <Mail class="size-5" />
         </a>
@@ -123,7 +125,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
             <a
               href={site.resume}
               aria-label="Resume"
-              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="rounded-md p-2.5 text-muted-foreground transition-colors hover:bg-brand/10 hover:text-brand"
             >
               <FileText class="size-5" />
             </a>
@@ -144,7 +146,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
   <section id="about" class="relative">
     <div
       aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_80%_at_12%_30%,--theme(--color-brand2/7%),transparent)]"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_80%_at_12%_30%,--theme(--color-brand2/13%),transparent)]"
     >
     </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
@@ -174,7 +176,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
   <section id="projects" class="relative">
     <div
       aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_65%_70%_at_85%_25%,--theme(--color-violet-400/6%),transparent)]"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_65%_70%_at_85%_25%,--theme(--color-violet-400/11%),transparent)]"
     >
     </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
@@ -206,7 +208,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
   <section id="contact" class="relative">
     <div
       aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_85%_at_20%_70%,--theme(--color-brand/6%),transparent)]"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_85%_at_20%_70%,--theme(--color-brand/11%),transparent)]"
     >
     </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">

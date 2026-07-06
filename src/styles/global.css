@@ -87,19 +87,20 @@
 }
 
 .dark {
-    --background: oklch(0.172 0.008 255);
-    --foreground: oklch(0.924 0 0);
-    --card: oklch(0.205 0.007 255);
+    --background: oklch(0.208 0.012 255);
+    --foreground: oklch(0.945 0 0);
+    --card: oklch(0.245 0.012 255);
     --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0.007 255);
+    --popover: oklch(0.245 0.012 255);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
+    /* Amber primary — CTAs carry the brand color. */
+    --primary: var(--brand);
+    --primary-foreground: oklch(0.23 0.045 70);
+    --secondary: oklch(0.31 0.012 255);
     --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    --muted: oklch(0.31 0.012 255);
+    --muted-foreground: oklch(0.76 0.01 255);
+    --accent: oklch(0.31 0.012 255);
     --accent-foreground: oklch(0.985 0 0);
     /* Machined-amber accent — nods to 3D-printed orange parts, not borrowed from anyone. */
     --brand: #e8a33d;
@@ -107,8 +108,8 @@
     /* Teal counterpart: links, nav hover, secondary glows. */
     --brand2: #45d4c3;
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
+    --border: oklch(1 0 0 / 14%);
+    --input: oklch(1 0 0 / 18%);
     --ring: oklch(0.556 0 0);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
@@ -167,7 +168,7 @@
   }
 }
 
-/* Custom spring cursor (fine pointers only; script gates itself too). */
+/* Custom dot + ring cursor (fine pointers only; script gates itself too). */
 @media (hover: hover) and (pointer: fine) {
   html.custom-cursor,
   html.custom-cursor a,
@@ -176,49 +177,54 @@
     cursor: none;
   }
 }
-#cursor {
+#cursor-dot {
   position: fixed;
   left: 0;
   top: 0;
   z-index: 9999;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--brand);
   pointer-events: none;
   will-change: transform;
   opacity: 0;
   transition: opacity 0.2s;
 }
-html.custom-cursor #cursor {
-  opacity: 1;
-}
-
-/* Corner brackets that snap around hovered links/buttons (CAD selection box). */
-#cursor-brackets {
+#cursor-ring {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 9998;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in oklab, var(--muted-foreground) 55%, transparent);
   pointer-events: none;
+  will-change: transform;
   opacity: 0;
-  transform: scale(1.15);
   transition:
-    left 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-    top 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-    height 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.15s,
-    transform 0.15s;
+    opacity 0.2s,
+    width 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    margin 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.2s,
+    background-color 0.2s;
 }
-html.custom-cursor #cursor-brackets.on {
+html.custom-cursor #cursor-dot,
+html.custom-cursor #cursor-ring {
   opacity: 1;
-  transform: scale(1);
 }
-#cursor-brackets i {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border: 0 solid var(--brand);
+/* Ring expands and tints amber around links/buttons. */
+#cursor-ring.link {
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-color: var(--brand);
+  background-color: var(--brand-soft);
 }
-#cursor-brackets i:nth-child(1) { left: 0; top: 0; border-left-width: 1.5px; border-top-width: 1.5px; }
-#cursor-brackets i:nth-child(2) { right: 0; top: 0; border-right-width: 1.5px; border-top-width: 1.5px; }
-#cursor-brackets i:nth-child(3) { left: 0; bottom: 0; border-left-width: 1.5px; border-bottom-width: 1.5px; }
-#cursor-brackets i:nth-child(4) { right: 0; bottom: 0; border-right-width: 1.5px; border-bottom-width: 1.5px; }
 
 /* Minimal typography for markdown project writeups (avoids a plugin dependency). */
 @layer components {
