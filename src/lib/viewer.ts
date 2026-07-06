@@ -24,10 +24,15 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 export function createViewer(container: HTMLElement): void {
   const src = container.dataset.modelSrc;
-  if (!src) return;
+  if (!src || container.dataset.viewerInit) return;
+  container.dataset.viewerInit = "1";
 
   // ?capture — poster-capture helper: tighter framing, no toolbar overlay.
   const captureMode = new URLSearchParams(location.search).has("capture");
+  // data-interactive="false" — pure turntable (home page cards): the canvas
+  // ignores the pointer so clicks fall through to the card link and the page
+  // keeps scrolling normally.
+  const interactive = container.dataset.interactive !== "false";
 
   const progressEl = container.querySelector<HTMLElement>("[data-viewer-progress]");
   const progressBar = container.querySelector<HTMLElement>("[data-viewer-progress-bar]");
@@ -45,6 +50,7 @@ export function createViewer(container: HTMLElement): void {
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.domElement.classList.add("absolute", "inset-0", "h-full", "w-full");
   renderer.domElement.setAttribute("aria-label", "Interactive 3D model");
+  if (!interactive) renderer.domElement.style.pointerEvents = "none";
 
   const scene = new Scene();
   const pmrem = new PMREMGenerator(renderer);
@@ -92,13 +98,23 @@ export function createViewer(container: HTMLElement): void {
     }
   }
   let pointerDown = false;
+  let resumeTimer: ReturnType<typeof setTimeout> | undefined;
   controls.addEventListener("start", () => {
     pointerDown = true;
+    // Pause the turntable while the visitor is in control (a wheel-zoom over
+    // the canvas fires this too) — it resumes shortly after they let go.
     controls.autoRotate = false;
+    clearTimeout(resumeTimer);
     wake();
   });
   controls.addEventListener("end", () => {
     pointerDown = false;
+    if (!captureMode) {
+      resumeTimer = setTimeout(() => {
+        controls.autoRotate = true;
+        wake();
+      }, 3000);
+    }
     wake();
   });
   controls.addEventListener("change", wake);

@@ -8,15 +8,16 @@ const links = [
 ];
 ---
 
-<header class="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
-  <div class="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+<!-- Floating nav: no bar, no border — it sits directly on the page background. -->
+<header class="absolute inset-x-0 top-0 z-50">
+  <div class="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
     <a href="/" class="text-sm font-semibold tracking-tight sm:text-base">{site.name}</a>
     <nav aria-label="Main" class="flex items-center gap-1 text-sm sm:gap-2">
       {
         links.map(({ href, label }) => (
           <a
             href={href}
-            class="rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:text-foreground sm:px-3"
+            class="rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:text-brand2 sm:px-3"
           >
             {label}
           </a>
@@ -26,7 +27,7 @@ const links = [
         site.resume && (
           <a
             href={site.resume}
-            class="ml-1 rounded-md border border-border px-3 py-1.5 font-medium transition-colors hover:bg-muted"
+            class="ml-1 rounded-md border border-border/60 px-3 py-1.5 font-medium transition-colors hover:border-brand/50 hover:text-brand"
           >
             Resume
           </a>

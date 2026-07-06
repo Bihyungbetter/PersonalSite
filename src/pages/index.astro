@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
-import { ProjectCard } from "@/components/ProjectCard";
+import ProjectCard from "@/components/ProjectCard.astro";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GitHub from "@/components/icons/GitHub.astro";
@@ -38,6 +38,10 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
       </div>
       <div
         class="absolute inset-0 [background:radial-gradient(ellipse_55%_45%_at_72%_-10%,--theme(--color-brand/9%),transparent)]"
+      >
+      </div>
+      <div
+        class="absolute inset-0 [background:radial-gradient(ellipse_45%_40%_at_10%_-10%,--theme(--color-brand2/8%),transparent)]"
       >
       </div>
     </div>
@@ -137,11 +141,17 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
   </section>
 
   <!-- About -->
-  <section id="about" class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
+  <section id="about" class="relative">
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_80%_at_12%_30%,--theme(--color-brand2/7%),transparent)]"
+    >
+    </div>
+    <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
     <h2
       class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
     >
-      <span aria-hidden="true" class="h-px w-8 bg-brand"></span>About
+      <span aria-hidden="true" class="h-px w-8 bg-brand2"></span>About
     </h2>
     <div class="mt-4 max-w-2xl space-y-4 leading-7 text-foreground/90">
       <p>
@@ -155,37 +165,52 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
         electronics, and a 3D printer for everything in between.
       </p>
     </div>
+    </div>
   </section>
 
   <Separator className="mx-auto max-w-5xl" />
 
   <!-- Projects -->
-  <section id="projects" class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-    <h2
-      class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
+  <section id="projects" class="relative">
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_65%_70%_at_85%_25%,--theme(--color-violet-400/6%),transparent)]"
     >
-      <span aria-hidden="true" class="h-px w-8 bg-brand"></span>Projects
-    </h2>
-    <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {
-        projects.map(({ id, data }) => (
-          <ProjectCard
-            href={`/projects/${id}/`}
-            title={data.title}
-            summary={data.summary}
-            tags={data.tags}
-            poster={data.poster}
-            hasModel={Boolean(data.model)}
-          />
-        ))
-      }
+    </div>
+    <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
+      <h2
+        class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
+      >
+        <span aria-hidden="true" class="h-px w-8 bg-violet-400"></span>Projects
+      </h2>
+      <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {
+          projects.map(({ id, data }) => (
+            <ProjectCard
+              href={`/projects/${id}/`}
+              title={data.title}
+              summary={data.summary}
+              tags={data.tags}
+              model={data.model}
+              poster={data.poster}
+              up={data.up}
+            />
+          ))
+        }
+      </div>
     </div>
   </section>
 
   <Separator className="mx-auto max-w-5xl" />
 
   <!-- Contact -->
-  <section id="contact" class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
+  <section id="contact" class="relative">
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_85%_at_20%_70%,--theme(--color-brand/6%),transparent)]"
+    >
+    </div>
+    <div class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
     <h2
       class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
     >
@@ -223,6 +248,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
           </a>
         )
       }
+    </div>
     </div>
   </section>
 </Base>
