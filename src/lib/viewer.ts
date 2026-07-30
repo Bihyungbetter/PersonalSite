@@ -158,7 +158,6 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
   const progressBar = container.querySelector<HTMLElement>("[data-viewer-progress-bar]");
   const axesEl = container.querySelector<HTMLElement>("[data-viewer-axes]");
   const posterEl = container.querySelector<HTMLElement>("[data-viewer-poster]");
-  if (progressEl) progressEl.hidden = false;
 
   const axisSpecs: AxisSpec[] = container.dataset.axes
     ? JSON.parse(container.dataset.axes)
@@ -368,75 +367,106 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
   }
 
   // --- Load model ---
+  // Deferred until the viewer is near the viewport. Constructing a viewer is
+  // cheap; fetching its .glb is not, and the home page has one per project card
+  // — starting them all at page load put several MB of models in flight at once,
+  // so the one card actually on screen was left fighting the other six for
+  // bandwidth. The poster holds the frame until its own model arrives.
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  loader.load(
-    src,
-    (gltf) => {
-      // STEP/CAD exports are usually Z-up; glTF is Y-up. `data-up="z"` stands them upright.
-      if (container.dataset.up === "z") gltf.scene.rotation.x = -Math.PI / 2;
-      scene.add(gltf.scene);
 
-      if (axisSpecs.length > 0) {
-        const pivots = articulate(gltf.scene, axisSpecs);
-        axisSpecs.forEach((spec, index) => {
-          const pivot = pivots.get(spec.id);
-          const slider = container.querySelector<HTMLInputElement>(
-            `[data-axis="${spec.id}"]`,
-          );
-          if (!pivot || !slider) return;
-          const readout = container.querySelector<HTMLElement>(
-            `[data-axis-value="${spec.id}"]`,
-          );
-          const axisVector = new Vector3(...spec.axis).normalize();
-          const apply = () => {
-            const degrees = Number(slider.value);
-            pivot.quaternion.setFromAxisAngle(axisVector, (degrees * Math.PI) / 180);
-            if (readout) readout.textContent = `${degrees}°`;
-            wake();
-          };
-          slider.addEventListener("input", apply);
-          // A real drag (native "input", never fired by the idle demo itself,
-          // which sets .value directly) holds the demo off for a few seconds —
-          // otherwise the very next idle-animated frame would fight the visitor
-          // over the slider they're mid-drag on.
-          slider.addEventListener("input", () => {
-            idleHoldUntil = performance.now() + 3000;
-          });
-          apply();
-          if (!captureMode) {
-            idleAxes.push({
-              pivot,
-              range: spec.range,
-              axisVector,
-              slider,
-              readout,
-              phase: index * 1.7,
+  let loadStarted = false;
+  // An arrow rather than a declaration so `src` keeps the narrowing from the
+  // guard at the top of this function.
+  const startLoad = () => {
+    if (loadStarted || disposed) return;
+    loadStarted = true;
+    loadObserver.disconnect();
+    if (progressEl) progressEl.hidden = false;
+    loader.load(
+      src,
+      (gltf) => {
+        // STEP/CAD exports are usually Z-up; glTF is Y-up. `data-up="z"` stands them upright.
+        if (container.dataset.up === "z") gltf.scene.rotation.x = -Math.PI / 2;
+        scene.add(gltf.scene);
+
+        if (axisSpecs.length > 0) {
+          const pivots = articulate(gltf.scene, axisSpecs);
+          axisSpecs.forEach((spec, index) => {
+            const pivot = pivots.get(spec.id);
+            const slider = container.querySelector<HTMLInputElement>(
+              `[data-axis="${spec.id}"]`,
+            );
+            if (!pivot || !slider) return;
+            const readout = container.querySelector<HTMLElement>(
+              `[data-axis-value="${spec.id}"]`,
+            );
+            const axisVector = new Vector3(...spec.axis).normalize();
+            const apply = () => {
+              const degrees = Number(slider.value);
+              pivot.quaternion.setFromAxisAngle(axisVector, (degrees * Math.PI) / 180);
+              if (readout) readout.textContent = `${degrees}°`;
+              wake();
+            };
+            slider.addEventListener("input", apply);
+            // A real drag (native "input", never fired by the idle demo itself,
+            // which sets .value directly) holds the demo off for a few seconds —
+            // otherwise the very next idle-animated frame would fight the visitor
+            // over the slider they're mid-drag on.
+            slider.addEventListener("input", () => {
+              idleHoldUntil = performance.now() + 3000;
             });
-          }
-        });
-        if (axesEl && !captureMode) axesEl.hidden = false;
-      }
+            apply();
+            if (!captureMode) {
+              idleAxes.push({
+                pivot,
+                range: spec.range,
+                axisVector,
+                slider,
+                readout,
+                phase: index * 1.7,
+              });
+            }
+          });
+          if (axesEl && !captureMode) axesEl.hidden = false;
+        }
 
-      frameModel(gltf.scene);
-      posterEl?.remove();
-      if (progressEl) progressEl.hidden = true;
-      container.appendChild(renderer.domElement);
-      wake();
+        frameModel(gltf.scene);
+        posterEl?.remove();
+        if (progressEl) progressEl.hidden = true;
+        container.appendChild(renderer.domElement);
+        wake();
+      },
+      (event) => {
+        if (progressBar && event.total > 0) {
+          progressBar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
+        }
+      },
+      (error) => {
+        console.error("Failed to load model:", error);
+        if (progressEl) {
+          progressEl.hidden = false;
+          progressEl.textContent = "Failed to load 3D model.";
+        }
+      },
+    );
+  };
+
+  // Deliberately separate from viewObserver above: that one gates *rendering*
+  // and wants true visibility, while this wants a head start, so the model is
+  // usually decoded and framed by the time the card is scrolled to.
+  const loadObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) startLoad();
     },
-    (event) => {
-      if (progressBar && event.total > 0) {
-        progressBar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
-      }
-    },
-    (error) => {
-      console.error("Failed to load model:", error);
-      if (progressEl) {
-        progressEl.hidden = false;
-        progressEl.textContent = "Failed to load 3D model.";
-      }
-    },
+    { rootMargin: "400px" },
   );
+
+  // A manual viewer is a project overlay panel, built only once the visitor has
+  // opened that project — there is nothing left to defer, and waiting for the
+  // observer would just cost a frame before its model even starts downloading.
+  if (container.dataset.viewerManual === undefined) loadObserver.observe(container);
+  else startLoad();
 
   function dispose() {
     if (disposed) return;
@@ -445,6 +475,7 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
     clearTimeout(resumeTimer);
     resizeObserver.disconnect();
     viewObserver.disconnect();
+    loadObserver.disconnect();
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pageshow", onPageShow);
     renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
