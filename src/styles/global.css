@@ -183,17 +183,6 @@ html.dialog-open {
   html.custom-cursor [role="button"] {
     cursor: none;
   }
-  /* The open project dialog is promoted to the browser's top layer, which
-     renders above #cursor-dot/#cursor-ring regardless of their z-index —
-     the fake cursor becomes invisible behind it. Fall back to the native
-     pointer for the dialog's contents rather than tracking the dialog's
-     stacking context just to keep the custom cursor alive over it. */
-  html.custom-cursor.dialog-open,
-  html.custom-cursor.dialog-open a,
-  html.custom-cursor.dialog-open button,
-  html.custom-cursor.dialog-open [role="button"] {
-    cursor: auto;
-  }
 }
 #cursor-dot {
   position: fixed;
@@ -234,13 +223,6 @@ html.dialog-open {
 html.custom-cursor #cursor-dot,
 html.custom-cursor #cursor-ring {
   opacity: 1;
-}
-/* ...but not while the project dialog is open: it lives in the browser's top
-   layer, so these sit *behind* its backdrop and only read as a blurred smudge.
-   The native pointer is restored above, so hide them outright. */
-html.dialog-open #cursor-dot,
-html.dialog-open #cursor-ring {
-  opacity: 0;
 }
 /* Ring expands and tints amber around links/buttons. */
 #cursor-ring.link {

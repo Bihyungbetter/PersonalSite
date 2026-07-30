@@ -205,6 +205,20 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
   let disposed = false;
   let lastTime = 0;
 
+  // Idle joint demo: while the camera turntable is auto-rotating (i.e. nobody's
+  // touched the model), sliders sweep their own range too, so articulation shows
+  // itself without requiring a visitor to find and drag a slider. Any real slider
+  // input holds this off for a few seconds, the same cooldown the turntable uses.
+  const idleAxes: Array<{
+    pivot: Group;
+    range: [number, number];
+    axisVector: Vector3;
+    slider: HTMLInputElement;
+    readout: HTMLElement | null;
+    phase: number;
+  }> = [];
+  let idleHoldUntil = 0;
+
   function canRun(): boolean {
     return (
       !disposed &&
@@ -227,6 +241,17 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 1 / 20) : 1 / 60;
       lastTime = now;
       const moved = controls.update(dt);
+      if (controls.autoRotate && idleAxes.length > 0 && now > idleHoldUntil) {
+        const t = now / 1000;
+        for (const a of idleAxes) {
+          const mid = (a.range[0] + a.range[1]) / 2;
+          const amp = (a.range[1] - a.range[0]) / 2;
+          const degrees = mid + amp * Math.sin(t * 0.6 + a.phase);
+          a.pivot.quaternion.setFromAxisAngle(a.axisVector, (degrees * Math.PI) / 180);
+          a.slider.value = String(degrees);
+          if (a.readout) a.readout.textContent = `${Math.round(degrees)}°`;
+        }
+      }
       renderer.render(scene, camera);
       settled = moved ? 0 : settled + 1;
     } finally {
@@ -354,12 +379,12 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
 
       if (axisSpecs.length > 0) {
         const pivots = articulate(gltf.scene, axisSpecs);
-        for (const spec of axisSpecs) {
+        axisSpecs.forEach((spec, index) => {
           const pivot = pivots.get(spec.id);
           const slider = container.querySelector<HTMLInputElement>(
             `[data-axis="${spec.id}"]`,
           );
-          if (!pivot || !slider) continue;
+          if (!pivot || !slider) return;
           const readout = container.querySelector<HTMLElement>(
             `[data-axis-value="${spec.id}"]`,
           );
@@ -371,8 +396,25 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
             wake();
           };
           slider.addEventListener("input", apply);
+          // A real drag (native "input", never fired by the idle demo itself,
+          // which sets .value directly) holds the demo off for a few seconds —
+          // otherwise the very next idle-animated frame would fight the visitor
+          // over the slider they're mid-drag on.
+          slider.addEventListener("input", () => {
+            idleHoldUntil = performance.now() + 3000;
+          });
           apply();
-        }
+          if (!captureMode) {
+            idleAxes.push({
+              pivot,
+              range: spec.range,
+              axisVector,
+              slider,
+              readout,
+              phase: index * 1.7,
+            });
+          }
+        });
         if (axesEl && !captureMode) axesEl.hidden = false;
       }
 
