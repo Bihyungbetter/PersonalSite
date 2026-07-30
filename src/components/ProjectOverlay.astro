@@ -132,6 +132,17 @@ const { projects } = Astro.props;
       } else {
         root.classList.remove("dialog-open");
       }
+      // showModal() promotes the dialog to the browser's top layer, which
+      // paints above the rest of the page regardless of z-index — including
+      // #cursor-dot/#cursor-ring, which normally live at the end of <body>.
+      // Reparenting them into the dialog while it's open carries them into
+      // that same top layer so the custom cursor keeps rendering over the
+      // model view; move them back out on close.
+      const dot = document.getElementById("cursor-dot");
+      const ring = document.getElementById("cursor-ring");
+      const target = locked ? dialog! : document.body;
+      if (dot) target.appendChild(dot);
+      if (ring) target.appendChild(ring);
     }
 
     function show(slug: string) {
