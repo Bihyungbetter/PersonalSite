@@ -52,11 +52,29 @@ interface AxisSpec {
   exclude: string[];
 }
 
-/** Exact name match, with `*` as the only wildcard. */
+/**
+ * Node names as they arrive in the scene graph, not as the CAD tool wrote them.
+ *
+ * GLTFLoader runs every node name through three.js's `sanitizeNodeName`, which
+ * turns whitespace into `_` and drops `[`, `]`, `.`, `:` and `/`. Axis configs
+ * are written with the names `npm run convert` prints — i.e. the *original*
+ * ones, spaces and all — so a pattern like `V-Axis Bed <1>` would never match
+ * the `V-Axis_Bed_<1>` that is actually in the tree. Comparing both sides in a
+ * normalized form keeps the frontmatter readable and copy-pasteable.
+ */
+function normalizeName(name: string): string {
+  return name
+    .replace(/[\s_]+/g, " ")
+    .replace(/[[\].:/]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** Exact name match against {@link normalizeName}, with `*` as the only wildcard. */
 function nameMatcher(pattern: string): RegExp {
-  // Split on the wildcard first so every other character — spaces included —
-  // stays literal, and no sentinel has to be smuggled through the string.
-  const escaped = pattern
+  // Split on the wildcard first so every other character stays literal, and no
+  // sentinel has to be smuggled through the string.
+  const escaped = normalizeName(pattern)
     .split("*")
     .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, (ch) => `\\${ch}`))
     .join(".*");
@@ -86,12 +104,11 @@ function articulate(scene: Object3D, specs: AxisSpec[]): Map<string, Group> {
     const include = spec.include.map(nameMatcher);
     const exclude = spec.exclude.map(nameMatcher);
     // Snapshot before attaching — attach() mutates assembly.children.
-    const members = assembly.children.filter(
-      (child) =>
-        !child.userData.axisPivot &&
-        include.some((re) => re.test(child.name)) &&
-        !exclude.some((re) => re.test(child.name)),
-    );
+    const members = assembly.children.filter((child) => {
+      if (child.userData.axisPivot) return false;
+      const name = normalizeName(child.name);
+      return include.some((re) => re.test(name)) && !exclude.some((re) => re.test(name));
+    });
     if (members.length === 0) {
       console.warn(`Axis "${spec.id}" matched no parts.`);
       continue;

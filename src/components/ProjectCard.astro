@@ -69,13 +69,20 @@ const { slug, title, summary, model, poster, up = "y" } = Astro.props;
           )
         }
       </h3>
-      <p class="line-clamp-2 text-sm text-muted-foreground">{summary}</p>
-      <span
-        aria-hidden="true"
-        class="mt-auto pt-1 font-mono text-xs text-muted-foreground/70 transition-colors group-hover:text-brand"
-      >
-        View in 3D →
-      </span>
+      {/* Not clamped: the overlay shows only the model, so this is the one place
+          a project's description appears — truncating it hides text with nowhere
+          left to read it. The grid equalises card heights per row anyway. */}
+      <p class="text-sm text-muted-foreground">{summary}</p>
+      {
+        model && (
+          <span
+            aria-hidden="true"
+            class="mt-auto pt-1 font-mono text-xs text-muted-foreground/70 transition-colors group-hover:text-brand"
+          >
+            View in 3D →
+          </span>
+        )
+      }
     </div>
   </div>
 </button>
