@@ -1,12 +1,15 @@
 ---
 /**
- * Project card with a live auto-rotating 3D viewer. The viewer is a pure
- * turntable (data-interactive="false"): the canvas ignores the pointer, so
- * the whole card stays a plain link and wheel-scrolling never zooms.
- * The poster paints instantly; the shared Three.js chunk swaps it out.
+ * Project card with a live auto-rotating 3D viewer.
+ *
+ * The card is a button, not a link: the whole site is one page, so activating a
+ * card opens the project in the in-page overlay (see ProjectOverlay.astro)
+ * rather than navigating. The viewer is a pure turntable
+ * (data-interactive="false") — the canvas ignores the pointer, so clicks reach
+ * the button underneath and wheel-scrolling never zooms.
  */
 interface Props {
-  href: string;
+  slug: string;
   title: string;
   summary: string;
   model?: string;
@@ -14,15 +17,21 @@ interface Props {
   up?: "y" | "z";
 }
 
-const { href, title, summary, model, poster, up = "y" } = Astro.props;
+const { slug, title, summary, model, poster, up = "y" } = Astro.props;
 ---
 
-<a href={href} class="group block h-full outline-none">
+<button
+  type="button"
+  data-project-open={slug}
+  aria-haspopup="dialog"
+  class="group block h-full w-full cursor-pointer text-left outline-none"
+>
   <div
     class="flex h-full flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 transition-all group-hover:ring-brand/50 group-focus-visible:ring-2 group-focus-visible:ring-ring"
   >
     <div
       class="relative aspect-[16/11] w-full select-none"
+      data-card-viewer
       data-model-src={model}
       data-up={up}
       data-interactive="false"
@@ -61,13 +70,12 @@ const { href, title, summary, model, poster, up = "y" } = Astro.props;
         }
       </h3>
       <p class="line-clamp-2 text-sm text-muted-foreground">{summary}</p>
+      <span
+        aria-hidden="true"
+        class="mt-auto pt-1 font-mono text-xs text-muted-foreground/70 transition-colors group-hover:text-brand"
+      >
+        View in 3D →
+      </span>
     </div>
   </div>
-</a>
-
-<script>
-  // Load the shared viewer chunk and start every turntable on the page.
-  for (const container of document.querySelectorAll<HTMLElement>("[data-model-src]")) {
-    import("@/lib/viewer").then(({ createViewer }) => createViewer(container));
-  }
-</script>
+</button>

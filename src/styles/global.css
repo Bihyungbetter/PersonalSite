@@ -168,6 +168,13 @@
   }
 }
 
+/* Page scroll lock while the project overlay is open. The padding replaces the
+   width the scrollbar was occupying, so the page behind does not shift. */
+html.dialog-open {
+  overflow: hidden;
+  padding-right: var(--scrollbar-gap, 0px);
+}
+
 /* Custom dot + ring cursor (fine pointers only; script gates itself too). */
 @media (hover: hover) and (pointer: fine) {
   html.custom-cursor,
@@ -175,6 +182,17 @@
   html.custom-cursor button,
   html.custom-cursor [role="button"] {
     cursor: none;
+  }
+  /* The open project dialog is promoted to the browser's top layer, which
+     renders above #cursor-dot/#cursor-ring regardless of their z-index —
+     the fake cursor becomes invisible behind it. Fall back to the native
+     pointer for the dialog's contents rather than tracking the dialog's
+     stacking context just to keep the custom cursor alive over it. */
+  html.custom-cursor.dialog-open,
+  html.custom-cursor.dialog-open a,
+  html.custom-cursor.dialog-open button,
+  html.custom-cursor.dialog-open [role="button"] {
+    cursor: auto;
   }
 }
 #cursor-dot {

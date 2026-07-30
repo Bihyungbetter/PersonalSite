@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # Raw CAD exports (large; keep out of git — regenerate with npm run convert)
 assets/models-src/
+
+# 4 GB-patched copy of occt-import-js (regenerate with npm run occt:4gb)
+.occt-4gb/

@@ -1,0 +1,221 @@
+---
+/**
+ * In-page project viewer.
+ *
+ * The site is a single page: clicking a project card opens this native
+ * <dialog> over the page instead of navigating anywhere. Each project's
+ * <ModelViewer> is rendered here at build time and simply revealed — the
+ * dialog shows nothing but the model itself, so opening a project costs no
+ * network request and the back button still works (each open pushes a
+ * `#p/<slug>` history entry).
+ *
+ * Each panel keeps its own <ModelViewer>, so per-project axis sliders keep
+ * working exactly as they did on the old standalone project pages. The viewers
+ * are marked `manual`: they are constructed the first time their project is
+ * opened, never on page load, and suspended again on close — so at most one
+ * WebGL context is ever rendering.
+ */
+import type { CollectionEntry } from "astro:content";
+import ModelViewer from "@/components/ModelViewer.astro";
+
+interface Props {
+  projects: CollectionEntry<"projects">[];
+}
+
+const { projects } = Astro.props;
+---
+
+<dialog
+  id="project-dialog"
+  aria-label="Project details"
+  class="m-auto max-h-none w-[min(96vw,72rem)] max-w-none bg-transparent p-0 text-foreground backdrop:bg-background/75 backdrop:backdrop-blur-sm"
+>
+  <div
+    class="relative flex h-[min(92dvh,54rem)] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/12"
+  >
+    <button
+      type="button"
+      data-project-close
+      aria-label="Close project"
+      class="absolute top-3 right-3 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:bg-muted hover:text-foreground"
+    >
+      <svg
+        class="size-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <path d="M18 6 6 18M6 6l12 12"></path>
+      </svg>
+    </button>
+
+    {
+      projects.map((project) => {
+        const { data } = project;
+        return (
+          <section data-project-panel={project.id} hidden class="min-h-0 flex-1 p-3 sm:p-4">
+            {/* Visually hidden: the dialog's aria-labelledby still needs a title to announce. */}
+            <h2 id={`project-title-${project.id}`} class="sr-only">
+              {data.title}
+            </h2>
+            {data.model && (
+              <ModelViewer
+                src={data.model}
+                poster={data.poster}
+                up={data.up}
+                axes={data.axes}
+                alt={`${data.title} 3D model`}
+                fill
+                manual
+              />
+            )}
+          </section>
+        );
+      })
+    }
+  </div>
+</dialog>
+
+<script>
+  import type { Viewer } from "@/lib/viewer";
+
+  const dialog = document.getElementById("project-dialog") as HTMLDialogElement | null;
+  if (dialog) {
+    const panels = new Map<string, HTMLElement>();
+    for (const panel of dialog.querySelectorAll<HTMLElement>("[data-project-panel]")) {
+      panels.set(panel.dataset.projectPanel!, panel);
+    }
+
+    // The Three.js chunk is shared by the cards and every panel, so the first
+    // import pays for all of them.
+    const viewerModule = import("@/lib/viewer");
+
+    // --- Card turntables ---------------------------------------------------
+    const cardViewers: Viewer[] = [];
+    for (const card of document.querySelectorAll<HTMLElement>("[data-card-viewer][data-model-src]")) {
+      viewerModule.then(({ createViewer }) => {
+        const viewer = createViewer(card);
+        if (viewer) cardViewers.push(viewer);
+      });
+    }
+
+    // --- Panel viewers: built on first open, never on page load ------------
+    const panelViewers = new Map<string, Viewer>();
+    function ensurePanelViewer(slug: string) {
+      if (panelViewers.has(slug)) return;
+      const host = panels.get(slug)?.querySelector<HTMLElement>("[data-model-src]");
+      if (!host) return;
+      // Claim the slot synchronously so a double-click cannot build two viewers
+      // (and two WebGL contexts) for the same panel while the chunk loads.
+      panelViewers.set(slug, null as unknown as Viewer);
+      viewerModule.then(({ createViewer }) => {
+        const viewer = createViewer(host);
+        if (viewer) panelViewers.set(slug, viewer);
+        else panelViewers.delete(slug);
+      });
+    }
+
+    // --- Open / close ------------------------------------------------------
+    let openSlug: string | null = null;
+    let lastFocused: HTMLElement | null = null;
+
+    function lockScroll(locked: boolean) {
+      const root = document.documentElement;
+      if (locked) {
+        // Compensate for the scrollbar so the page behind does not jump.
+        const gap = window.innerWidth - root.clientWidth;
+        root.style.setProperty("--scrollbar-gap", `${gap}px`);
+        root.classList.add("dialog-open");
+      } else {
+        root.classList.remove("dialog-open");
+      }
+    }
+
+    function show(slug: string) {
+      const panel = panels.get(slug);
+      if (!panel || slug === openSlug) return;
+
+      if (openSlug) {
+        panels.get(openSlug)!.hidden = true;
+        panelViewers.get(openSlug)?.suspend();
+      }
+      panel.hidden = false;
+      openSlug = slug;
+
+      if (!dialog!.open) {
+        lastFocused = document.activeElement as HTMLElement | null;
+        dialog!.showModal();
+        lockScroll(true);
+        // Only one viewer should ever be rendering.
+        for (const viewer of cardViewers) viewer.suspend();
+      }
+      dialog!.setAttribute("aria-labelledby", `project-title-${slug}`);
+      // The panel is only measurable once it is visible, which is what the
+      // viewer needs in order to size its canvas.
+      ensurePanelViewer(slug);
+      panelViewers.get(slug)?.resume();
+      panel.scrollTop = 0;
+    }
+
+    function hide() {
+      if (!dialog!.open) return;
+      if (openSlug) {
+        panels.get(openSlug)!.hidden = true;
+        panelViewers.get(openSlug)?.suspend();
+      }
+      openSlug = null;
+      dialog!.close();
+    }
+
+    // Fires for close() and for Esc, so all the cleanup lives in one place.
+    dialog.addEventListener("close", () => {
+      if (openSlug) {
+        panels.get(openSlug)!.hidden = true;
+        panelViewers.get(openSlug)?.suspend();
+        openSlug = null;
+      }
+      lockScroll(false);
+      for (const viewer of cardViewers) viewer.resume();
+      if (location.hash.startsWith("#p/")) {
+        history.pushState(null, "", "#projects");
+      }
+      lastFocused?.focus();
+    });
+
+    for (const trigger of document.querySelectorAll<HTMLElement>("[data-project-open]")) {
+      trigger.addEventListener("click", () => {
+        const slug = trigger.dataset.projectOpen!;
+        if (!panels.has(slug)) return;
+        history.pushState({ project: slug }, "", `#p/${slug}`);
+        show(slug);
+      });
+    }
+
+    dialog.querySelector("[data-project-close]")?.addEventListener("click", hide);
+
+    // Clicking the backdrop closes: with a modal <dialog> the backdrop counts as
+    // the dialog element itself, so only a hit on the element and not its panel
+    // means the click landed outside.
+    dialog.addEventListener("mousedown", (event) => {
+      if (event.target === dialog) hide();
+    });
+
+    // --- Hash routing ------------------------------------------------------
+    // Each open pushes a history entry, so Back closes the overlay and a
+    // #p/<slug> link opens straight into a project.
+    const slugFromHash = () =>
+      location.hash.startsWith("#p/") ? decodeURIComponent(location.hash.slice(3)) : null;
+
+    window.addEventListener("popstate", () => {
+      const slug = slugFromHash();
+      if (slug && panels.has(slug)) show(slug);
+      else hide();
+    });
+
+    const initial = slugFromHash();
+    if (initial && panels.has(initial)) show(initial);
+  }
+</script>

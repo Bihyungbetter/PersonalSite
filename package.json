@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "astro": "astro",
-    "convert": "node scripts/step-to-glb.mjs",
+    "convert": "node --max-old-space-size=12288 scripts/step-to-glb.mjs",
+    "occt:4gb": "node scripts/patch-occt-4gb.mjs",
     "optimize": "node scripts/optimize-model.mjs",
     "deploy": "astro build && npx wrangler pages deploy dist --project-name michael-lu --branch main"
   },

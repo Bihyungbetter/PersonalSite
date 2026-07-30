@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
+import ProjectOverlay from "@/components/ProjectOverlay.astro";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import GitHub from "@/components/icons/GitHub.astro";
@@ -36,14 +37,6 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
         class="absolute inset-0 [background-image:linear-gradient(to_right,--theme(--color-brand2/12%)_1px,transparent_1px),linear-gradient(to_bottom,--theme(--color-brand2/12%)_1px,transparent_1px)] [background-size:120px_120px]"
       >
       </div>
-      <div
-        class="absolute inset-0 [background:radial-gradient(ellipse_55%_45%_at_72%_-10%,--theme(--color-brand/20%),transparent)]"
-      >
-      </div>
-      <div
-        class="absolute inset-0 [background:radial-gradient(ellipse_45%_42%_at_10%_-10%,--theme(--color-brand2/16%),transparent)]"
-      >
-      </div>
     </div>
 
     <div class="mx-auto w-full max-w-5xl px-4 pt-24 pb-20 sm:px-6 sm:pt-36 sm:pb-28">
@@ -51,7 +44,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
         {site.role}
       </p>
       <h1
-        class="mt-3 w-fit bg-gradient-to-r from-brand via-[#ef8d64] to-brand2 bg-clip-text text-5xl font-bold tracking-tight text-balance text-transparent sm:text-7xl"
+        class="mt-3 w-fit text-5xl font-bold tracking-tight text-balance text-foreground sm:text-7xl"
       >
         {site.name}
       </h1>
@@ -144,11 +137,6 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
 
   <!-- About -->
   <section id="about" class="relative">
-    <div
-      aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_80%_at_12%_30%,--theme(--color-brand2/13%),transparent)]"
-    >
-    </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
     <h2
       class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
@@ -174,11 +162,6 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
 
   <!-- Projects -->
   <section id="projects" class="relative">
-    <div
-      aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_65%_70%_at_85%_25%,--theme(--color-violet-400/11%),transparent)]"
-    >
-    </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
       <h2
         class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
@@ -189,7 +172,7 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
         {
           projects.map(({ id, data }) => (
             <ProjectCard
-              href={`/projects/${id}/`}
+              slug={id}
               title={data.title}
               summary={data.summary}
               model={data.model}
@@ -206,11 +189,6 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
 
   <!-- Contact -->
   <section id="contact" class="relative">
-    <div
-      aria-hidden="true"
-      class="absolute inset-0 -z-10 [background:radial-gradient(ellipse_55%_85%_at_20%_70%,--theme(--color-brand/11%),transparent)]"
-    >
-    </div>
     <div class="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
     <h2
       class="flex items-center gap-3 font-mono text-sm tracking-widest text-muted-foreground uppercase"
@@ -252,4 +230,6 @@ const roles = ["biped robots", "flight sim hardware", "custom macropads", "thing
     </div>
     </div>
   </section>
+
+  <ProjectOverlay projects={projects} />
 </Base>

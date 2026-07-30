@@ -25,6 +25,32 @@ const projects = defineCollection({
     specs: z
       .array(z.object({ label: z.string(), value: z.string() }))
       .default([]),
+    /**
+     * Movable joints, exposed as sliders under the viewer.
+     *
+     * CAD mates do not survive export — neither STEP nor glTF carries them — so
+     * articulation is declared here instead. `include`/`exclude` match the node
+     * names printed by `npm run convert` (exact match; `*` wildcards allowed).
+     * `pivot` and `axis` are in the model's own CAD coordinates (millimetres,
+     * pre-scale), which is what the convert script's part centres report.
+     */
+    axes: z
+      .array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          pivot: z.tuple([z.number(), z.number(), z.number()]),
+          axis: z.tuple([z.number(), z.number(), z.number()]),
+          // Slider limits in degrees — a display range, not a machine limit.
+          range: z.tuple([z.number(), z.number()]).default([-180, 180]),
+          start: z.number().default(0),
+          // id of another axis this one rides on (e.g. a bed carried by a tilt).
+          parent: z.string().optional(),
+          include: z.array(z.string()).default(["*"]),
+          exclude: z.array(z.string()).default([]),
+        }),
+      )
+      .default([]),
   }),
 });
 

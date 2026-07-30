@@ -1,25 +1,63 @@
 ---
 /**
  * 3D viewer island. The poster/placeholder paints instantly as static HTML;
- * the small script below then lazy-imports the Three.js viewer chunk right
- * away, which replaces the poster once the model is ready and auto-rotates
- * until the visitor grabs it.
+ * the Three.js viewer chunk is then lazy-imported and replaces the poster once
+ * the model is ready, auto-rotating until the visitor grabs it.
+ *
+ * Construction is driven from one place — the bootstrap script in
+ * ProjectOverlay.astro — rather than a script here, so that the page can hold
+ * on to each viewer's handle and suspend it while something else is on screen.
  */
+interface Axis {
+  id: string;
+  label: string;
+  pivot: [number, number, number];
+  axis: [number, number, number];
+  range: [number, number];
+  start: number;
+  parent?: string;
+  include: string[];
+  exclude: string[];
+}
+
 interface Props {
   src: string;
   poster?: string;
   alt?: string;
   /** CAD exports are usually Z-up; glTF is Y-up. Set "z" to stand the model upright. */
   up?: "y" | "z";
+  /** Movable joints — rendered as sliders and reconstructed by the viewer. */
+  axes?: Axis[];
+  /** Stretch to fill its container instead of holding a fixed aspect ratio. */
+  fill?: boolean;
+  /** Skip automatic construction; the page decides when this viewer starts. */
+  manual?: boolean;
 }
 
-const { src, poster, alt = "3D model preview", up = "y" } = Astro.props;
+const {
+  src,
+  poster,
+  alt = "3D model preview",
+  up = "y",
+  axes = [],
+  fill = false,
+  manual = false,
+} = Astro.props;
+
+const shape = fill
+  ? "aspect-[4/3] w-full sm:aspect-[16/10] lg:aspect-auto lg:h-full"
+  : "aspect-[4/3] w-full sm:aspect-[16/9]";
 ---
 
 <div
-  class="model-viewer group relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 select-none sm:aspect-[16/9]"
+  class:list={[
+    "model-viewer group relative overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 select-none",
+    shape,
+  ]}
   data-model-src={src}
   data-up={up}
+  data-axes={axes.length > 0 ? JSON.stringify(axes) : undefined}
+  data-viewer-manual={manual ? "" : undefined}
 >
   <div data-viewer-poster class="absolute inset-0">
     {
@@ -48,59 +86,38 @@ const { src, poster, alt = "3D model preview", up = "y" } = Astro.props;
     </div>
   </div>
 
-  <div data-viewer-controls hidden class="absolute inset-x-2 bottom-2 z-10 flex items-end justify-between gap-2">
-    <span class="px-1 text-xs text-muted-foreground/80">Drag to orbit · scroll to zoom</span>
-    <div class="flex gap-1.5">
-      <button
-        type="button"
-        data-viewer-reset
-        class="flex items-center gap-1.5 rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
+  {
+    axes.length > 0 && (
+      <div
+        data-viewer-axes
+        hidden
+        class="absolute top-2 left-2 z-10 w-40 rounded-md border border-border bg-background/80 p-2.5 backdrop-blur sm:w-48"
       >
-        <svg
-          class="size-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-          <path d="M3 3v5h5"></path>
-        </svg>
-        Reset view
-      </button>
-      <button
-        type="button"
-        data-viewer-fullscreen
-        class="flex items-center gap-1.5 rounded-md border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-muted"
-      >
-        <svg
-          class="size-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
-          <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
-          <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
-          <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
-        </svg>
-        Fullscreen
-      </button>
-    </div>
-  </div>
-</div>
-
-<script>
-  // Load the viewer immediately — the poster keeps the page painting fast while
-  // the (cached, code-split) Three.js chunk and model stream in.
-  for (const container of document.querySelectorAll<HTMLElement>("[data-model-src]")) {
-    import("@/lib/viewer").then(({ createViewer }) => createViewer(container));
+        <p class="mb-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+          Axes
+        </p>
+        {axes.map((axis) => (
+          <label class="mt-2.5 block first:mt-0">
+            <span class="flex items-baseline justify-between gap-2 text-xs">
+              <span class="font-medium">{axis.label}</span>
+              <span data-axis-value={axis.id} class="text-muted-foreground tabular-nums">
+                {axis.start}°
+              </span>
+            </span>
+            <input
+              type="range"
+              data-axis={axis.id}
+              min={axis.range[0]}
+              max={axis.range[1]}
+              value={axis.start}
+              step="1"
+              aria-label={axis.label}
+              class="mt-1.5 w-full accent-foreground"
+            />
+          </label>
+        ))}
+      </div>
+    )
   }
-</script>
+
+</div>
