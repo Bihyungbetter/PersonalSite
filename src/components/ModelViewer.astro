@@ -44,9 +44,11 @@ const {
   manual = false,
 } = Astro.props;
 
-const shape = fill
-  ? "aspect-[4/3] w-full sm:aspect-[16/10] lg:aspect-auto lg:h-full"
-  : "aspect-[4/3] w-full sm:aspect-[16/9]";
+// `fill` takes the container's height at every breakpoint. It used to hold an
+// aspect ratio below `lg`, from when the project overlay stacked the viewer
+// above a text panel that absorbed the leftover height; the overlay is now the
+// model alone, so an aspect ratio there just leaves the dialog 40% empty.
+const shape = fill ? "h-full w-full" : "aspect-[4/3] w-full sm:aspect-[16/9]";
 ---
 
 <div

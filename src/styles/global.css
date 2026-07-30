@@ -235,6 +235,13 @@ html.custom-cursor #cursor-dot,
 html.custom-cursor #cursor-ring {
   opacity: 1;
 }
+/* ...but not while the project dialog is open: it lives in the browser's top
+   layer, so these sit *behind* its backdrop and only read as a blurred smudge.
+   The native pointer is restored above, so hide them outright. */
+html.dialog-open #cursor-dot,
+html.dialog-open #cursor-ring {
+  opacity: 0;
+}
 /* Ring expands and tints amber around links/buttons. */
 #cursor-ring.link {
   width: 48px;

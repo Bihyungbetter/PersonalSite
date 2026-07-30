@@ -82,12 +82,23 @@ statically rendered), and a lazy-loaded vanilla [Three.js](https://threejs.org) 
    parts pushed well below it are being deformed by the error bound, not decimated.
 4. **Write the entry:** add `src/content/projects/my-project.md` with frontmatter
    (`title`, `summary`, `date`, `tags`, `tools`, `model: /models/my-project.glb`,
-   optional `poster`, `specs`, `links`) and a markdown writeup. The page is generated
-   automatically at `/projects/my-project/`.
-5. **Optional poster:** open the project page with `?capture` appended (tighter framing,
-   no toolbar), screenshot the viewer, save as WebP to `public/posters/`, and set
-   `poster: /posters/my-project.webp`. The poster paints instantly before the 3D viewer
-   loads; without one, a placeholder grid is shown.
+   optional `poster`, `specs`, `links`). The site is a single page — the project is
+   picked up automatically and opens in the in-page overlay at `#p/my-project`.
+
+   Note that the overlay shows **only the model**: `title` and `summary` appear on the
+   card, and `date`/`featured` set the ordering, but `specs`, `tags`, `tools`, `links`
+   and the markdown body are not currently rendered anywhere (see
+   `ProjectOverlay.astro`). Fill them in if you want them ready for a writeup panel,
+   but don't expect them on screen today.
+5. **Optional poster:** open the site with `?capture` appended (tighter framing, no
+   auto-rotate, axis sliders hidden), screenshot a viewer, save as WebP to
+   `public/posters/`, and set `poster: /posters/my-project.webp`. The poster paints
+   instantly before the 3D viewer loads; without one, a placeholder grid with the
+   title's first letter is shown.
+
+   **Name a changed model file differently** (`my-project-v2.glb`). `public/_headers`
+   serves `/models/*` as `immutable` for a year, so re-uploading different geometry at
+   a URL a visitor already has cached will not reach them.
 
 ## Making an assembly movable
 

@@ -70,12 +70,16 @@ const { slug, title, summary, model, poster, up = "y" } = Astro.props;
         }
       </h3>
       <p class="line-clamp-2 text-sm text-muted-foreground">{summary}</p>
-      <span
-        aria-hidden="true"
-        class="mt-auto pt-1 font-mono text-xs text-muted-foreground/70 transition-colors group-hover:text-brand"
-      >
-        View in 3D →
-      </span>
+      {
+        model && (
+          <span
+            aria-hidden="true"
+            class="mt-auto pt-1 font-mono text-xs text-muted-foreground/70 transition-colors group-hover:text-brand"
+          >
+            View in 3D →
+          </span>
+        )
+      }
     </div>
   </div>
 </button>
