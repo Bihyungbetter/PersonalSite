@@ -159,15 +159,28 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
   const axesEl = container.querySelector<HTMLElement>("[data-viewer-axes]");
   const posterEl = container.querySelector<HTMLElement>("[data-viewer-poster]");
 
+  const showError = (message: string) => {
+    if (!progressEl) return;
+    progressEl.hidden = false;
+    progressEl.setAttribute("role", "status");
+    progressEl.textContent = message;
+  };
+
   const axisSpecs: AxisSpec[] = container.dataset.axes
     ? JSON.parse(container.dataset.axes)
     : [];
 
-  const renderer = new WebGLRenderer({
-    antialias: window.devicePixelRatio < 2,
-    alpha: true,
-    powerPreference: "low-power",
-  });
+  let renderer: WebGLRenderer;
+  try {
+    renderer = new WebGLRenderer({
+      antialias: window.devicePixelRatio < 2,
+      alpha: true,
+      powerPreference: "low-power",
+    });
+  } catch {
+    showError("3D preview is unavailable in this browser.");
+    return;
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.toneMapping = ACESFilmicToneMapping;
@@ -336,7 +349,10 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
 
   // The GPU process can drop contexts while a tab is backgrounded. Three.js
   // reinitialises itself on restore; we only have to restart the loop.
-  const onContextLost = () => {
+  const onContextLost = (event: Event) => {
+    // Opt in to the browser's context restoration path. Without preventing the
+    // default action, webglcontextrestored may never be dispatched.
+    event.preventDefault();
     contextLost = true;
     stopLoop();
   };
@@ -444,10 +460,7 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
       },
       (error) => {
         console.error("Failed to load model:", error);
-        if (progressEl) {
-          progressEl.hidden = false;
-          progressEl.textContent = "Failed to load 3D model.";
-        }
+        showError("Failed to load 3D model.");
       },
     );
   };
