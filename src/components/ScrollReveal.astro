@@ -1,0 +1,78 @@
+---
+/**
+ * Scroll reveal — the delay that buys the models their loading time.
+ *
+ * Anything marked `data-reveal` starts a little low and transparent and settles
+ * into place as it comes up the viewport. That pause is not decoration: the
+ * preload band in `viewer.ts` reaches roughly a viewport and a half ahead, so a
+ * card's `.glb` is already queued — usually already downloading — by the time
+ * the card begins its reveal, and the animation covers the tail of the fetch.
+ * The model tends to be there before the card has finished arriving.
+ *
+ * Rendered into <head> and deliberately `is:inline`:
+ *
+ * - It has to run before first paint. A bundled module script is deferred, so
+ *   the page would paint every card in place and then snap them to `opacity: 0`
+ *   once the module executed.
+ * - Hiding content from CSS that only JavaScript can undo is a blank page if
+ *   that JavaScript never arrives. Inline has no such fetch to fail, and the
+ *   failsafe below covers the rest.
+ */
+---
+
+<script is:inline>
+  (() => {
+    const root = document.documentElement;
+    // Reduced motion never hides anything in the first place.
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // Arms the CSS in global.css. Set synchronously so the initial state is in
+    // place for the very first paint.
+    root.classList.add("reveal-ready");
+
+    let observer;
+    // Belt and braces: if anything below throws, or the observer somehow never
+    // fires, drop the class and show the page rather than leave it blank.
+    const revealAll = () => {
+      observer?.disconnect();
+      for (const el of document.querySelectorAll("[data-reveal]")) el.classList.add("revealed");
+      root.classList.remove("reveal-ready");
+    };
+    const failsafe = setTimeout(revealAll, 3000);
+
+    const start = () => {
+      try {
+        observer = new IntersectionObserver(
+          (entries) => {
+            // Stagger whatever crosses the line together — a grid row arrives as
+            // a row, not as one block. Indexed per batch, so a single card
+            // scrolled to on its own never sits waiting behind a stale count.
+            let index = 0;
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              const el = entry.target;
+              el.style.setProperty("--reveal-delay", `${Math.min(index++, 4) * 90}ms`);
+              el.classList.add("revealed");
+              observer.unobserve(el);
+            }
+          },
+          // Fire a little before the element's edge clears, so the reveal is
+          // finishing as it reaches comfortable reading height rather than
+          // starting there.
+          { rootMargin: "0px 0px -12% 0px", threshold: 0.05 },
+        );
+        for (const el of document.querySelectorAll("[data-reveal]")) observer.observe(el);
+        clearTimeout(failsafe);
+      } catch {
+        clearTimeout(failsafe);
+        revealAll();
+      }
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else {
+      start();
+    }
+  })();
+</script>

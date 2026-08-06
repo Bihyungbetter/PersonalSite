@@ -81,6 +81,118 @@ function nameMatcher(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`, "i");
 }
 
+// ---------------------------------------------------------------------------
+// Shared model download queue
+// ---------------------------------------------------------------------------
+/**
+ * Every project card owns a viewer and every viewer wants a multi-megabyte
+ * `.glb`. Left to themselves they each start the moment they enter their
+ * preload band, so one flick of the scroll wheel puts the whole set in flight
+ * and the model the visitor is actually looking at ends up sharing the pipe
+ * with six it cannot see.
+ *
+ * So downloads go through one queue instead: at most {@link MAX_IN_FLIGHT} at a
+ * time, picked by priority and then by distance to the viewport, re-evaluated
+ * every time a slot frees. That serialisation is what makes the rest of the
+ * strategy safe — the preload band can reach far ahead of the viewport, and
+ * idle time can be spent warming models nobody has scrolled to yet, without
+ * either ever costing the on-screen model its bandwidth.
+ */
+const MAX_IN_FLIGHT = 2;
+
+/** Priority tiers — lower wins. */
+/** A project the visitor just opened: never queued, never made to wait. */
+const URGENT = 0;
+/** Inside the preload band, i.e. on its way to the viewport. */
+const NEAR = 1;
+/** Idle warm-up of a model that is nowhere near the viewport yet. */
+const WARM = 2;
+
+interface LoadRequest {
+  container: HTMLElement;
+  priority: number;
+  start: () => void;
+}
+
+const pending: LoadRequest[] = [];
+let inFlight = 0;
+let urgentInFlight = 0;
+
+/** Pixels of gap between a container and the viewport; 0 while it is on screen. */
+function viewportDistance(el: HTMLElement): number {
+  const rect = el.getBoundingClientRect();
+  if (rect.bottom < 0) return -rect.bottom;
+  if (rect.top > window.innerHeight) return rect.top - window.innerHeight;
+  return 0;
+}
+
+function pump() {
+  // Speculative work stays parked while a visitor-initiated load is running.
+  while (urgentInFlight === 0 && inFlight < MAX_IN_FLIGHT && pending.length > 0) {
+    let best = 0;
+    let bestDistance = viewportDistance(pending[0].container);
+    for (let i = 1; i < pending.length; i++) {
+      // Measured now rather than when queued: by the time a slot frees the page
+      // has usually scrolled, and the nearest model has changed with it.
+      const distance = viewportDistance(pending[i].container);
+      const closer =
+        pending[i].priority < pending[best].priority ||
+        (pending[i].priority === pending[best].priority && distance < bestDistance);
+      if (closer) {
+        best = i;
+        bestDistance = distance;
+      }
+    }
+    const next = pending.splice(best, 1)[0];
+    inFlight++;
+    next.start();
+  }
+}
+
+function enqueue(request: LoadRequest) {
+  if (request.priority === URGENT) {
+    // Somebody is watching a progress bar: admit it over the cap, and stop
+    // feeding the queue until it lands so it has the connection to itself.
+    urgentInFlight++;
+    inFlight++;
+    request.start();
+    return;
+  }
+  pending.push(request);
+  pump();
+}
+
+/** Hand the slot back. Called exactly once per admitted request. */
+function release(priority: number) {
+  inFlight--;
+  if (priority === URGENT) urgentInFlight--;
+  pump();
+}
+
+interface NetworkInformation {
+  saveData?: boolean;
+  effectiveType?: string;
+}
+
+/** Data Saver, or a connection too slow to spend on models nobody asked for. */
+function isFrugalConnection(): boolean {
+  const connection = (navigator as Navigator & { connection?: NetworkInformation }).connection;
+  if (!connection) return false;
+  return Boolean(connection.saveData) || /2g/.test(connection.effectiveType ?? "");
+}
+
+/** Run once the page has finished loading and the main thread has a moment. */
+function whenIdle(fn: () => void) {
+  const schedule = () => {
+    if ("requestIdleCallback" in window) requestIdleCallback(fn, { timeout: 4000 });
+    else setTimeout(fn, 1500);
+  };
+  if (document.readyState === "complete") schedule();
+  else window.addEventListener("load", schedule, { once: true });
+}
+
+const prefersReducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 
 /**
  * Reparent the parts named by each axis under a pivot at that axis's centre of
@@ -392,16 +504,58 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
   loader.setMeshoptDecoder(MeshoptDecoder);
 
   let loadStarted = false;
+  let request: LoadRequest | null = null;
+
+  /**
+   * Ask for this model at `priority`. Repeat calls only ever promote it: a
+   * viewer sitting in the idle warm-up batch that then scrolls into the preload
+   * band jumps the rest of that batch instead of waiting its turn behind it.
+   */
+  const requestLoad = (priority: number) => {
+    if (loadStarted || disposed) return;
+    if (request) {
+      if (priority >= request.priority) return;
+      const index = pending.indexOf(request);
+      // Not in the queue means it is already running, and `loadStarted` above
+      // has normally caught that first.
+      if (index === -1) return;
+      pending.splice(index, 1);
+      request.priority = priority;
+      enqueue(request);
+      return;
+    }
+    request = { container, priority, start: () => startLoad(priority) };
+    enqueue(request);
+  };
+
   // An arrow rather than a declaration so `src` keeps the narrowing from the
   // guard at the top of this function.
-  const startLoad = () => {
-    if (loadStarted || disposed) return;
+  const startLoad = (priority: number) => {
+    if (loadStarted || disposed) {
+      release(priority);
+      return;
+    }
     loadStarted = true;
     loadObserver.disconnect();
     if (progressEl) progressEl.hidden = false;
+
+    // GLTFLoader routes an exception thrown inside its onLoad callback to
+    // onError, so both can run for a single request. The slot must come back
+    // exactly once either way, or `inFlight` drifts and the cap stops capping.
+    let released = false;
+    const releaseSlot = () => {
+      if (released) return;
+      released = true;
+      release(priority);
+    };
+
     loader.load(
       src,
       (gltf) => {
+        // Free the slot before any of the work below, so the next model starts
+        // downloading while this one is being articulated and framed.
+        releaseSlot();
+        if (disposed) return;
         // STEP/CAD exports are usually Z-up; glTF is Y-up. `data-up="z"` stands them upright.
         if (container.dataset.up === "z") gltf.scene.rotation.x = -Math.PI / 2;
         scene.add(gltf.scene);
@@ -448,9 +602,13 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
         }
 
         frameModel(gltf.scene);
-        posterEl?.remove();
         if (progressEl) progressEl.hidden = true;
+        // Draw once before the canvas is on screen. Appending it and letting the
+        // rAF loop catch up would show an empty rectangle for a frame first,
+        // which reads as a flicker at exactly the moment the model arrives.
+        renderer.render(scene, camera);
         container.appendChild(renderer.domElement);
+        revealCanvas();
         wake();
       },
       (event) => {
@@ -459,27 +617,70 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
         }
       },
       (error) => {
+        releaseSlot();
         console.error("Failed to load model:", error);
         showError("Failed to load 3D model.");
       },
     );
   };
 
+  /**
+   * Cross-fade the model in over its poster instead of swapping them on a
+   * single frame. The poster is a still of the same model from the same angle,
+   * so a fade reads as the image sharpening into something you can grab rather
+   * than as a page element being replaced.
+   */
+  function revealCanvas() {
+    const canvas = renderer.domElement;
+    if (!posterEl || prefersReducedMotion) {
+      posterEl?.remove();
+      return;
+    }
+    const poster = posterEl;
+    const FADE_MS = 450;
+    canvas.style.opacity = "0";
+    canvas.style.transition = `opacity ${FADE_MS}ms ease`;
+    poster.style.transition = `opacity ${FADE_MS}ms ease`;
+    requestAnimationFrame(() => {
+      canvas.style.opacity = "1";
+      poster.style.opacity = "0";
+    });
+    setTimeout(() => {
+      poster.remove();
+      canvas.style.transition = "";
+      canvas.style.opacity = "";
+    }, FADE_MS + 60);
+  }
+
   // Deliberately separate from viewObserver above: that one gates *rendering*
   // and wants true visibility, while this wants a head start, so the model is
   // usually decoded and framed by the time the card is scrolled to.
+  //
+  // The band is a viewport and a half of runway rather than a flat 400px, which
+  // at ordinary scroll speeds is a second or two of warning. It can afford to be
+  // this greedy because the queue admits two downloads at a time and always
+  // picks the nearest — a wider band changes what is *queued*, not what is in
+  // flight, so an early request can never crowd out a closer one.
   const loadObserver = new IntersectionObserver(
     (entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) startLoad();
+      if (entries.some((entry) => entry.isIntersecting)) requestLoad(NEAR);
     },
-    { rootMargin: "400px" },
+    { rootMargin: `${Math.round(Math.max(600, window.innerHeight * 1.5))}px 0px` },
   );
 
   // A manual viewer is a project overlay panel, built only once the visitor has
   // opened that project — there is nothing left to defer, and waiting for the
   // observer would just cost a frame before its model even starts downloading.
-  if (container.dataset.viewerManual === undefined) loadObserver.observe(container);
-  else startLoad();
+  if (container.dataset.viewerManual !== undefined) {
+    requestLoad(URGENT);
+  } else {
+    loadObserver.observe(container);
+    // Everything the visitor has not scrolled anywhere near yet still gets
+    // fetched, just last and only once the page has gone quiet. Scrolling on to
+    // a card whose model is already decoded is the whole point: the wait moves
+    // off the critical path and into time that was idle anyway.
+    if (!isFrugalConnection()) whenIdle(() => requestLoad(WARM));
+  }
 
   function dispose() {
     if (disposed) return;
@@ -489,6 +690,13 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
     resizeObserver.disconnect();
     viewObserver.disconnect();
     loadObserver.disconnect();
+    // Drop a queued-but-unstarted load, so a torn-down viewer cannot be handed
+    // a slot ahead of one that is still on screen.
+    if (request) {
+      const index = pending.indexOf(request);
+      if (index !== -1) pending.splice(index, 1);
+      request = null;
+    }
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pageshow", onPageShow);
     renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
