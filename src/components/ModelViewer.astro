@@ -64,7 +64,19 @@ const shape = fill ? "h-full w-full" : "aspect-[4/3] w-full sm:aspect-[16/9]";
   <div data-viewer-poster class="absolute inset-0">
     {
       poster ? (
-        <img src={poster} alt={alt} class="h-full w-full object-cover" decoding="async" />
+        // Lazy even though a poster is the thing this component exists to show
+        // first: every overlay panel renders one, and the panels sit `hidden`
+        // inside the dialog at page load. Eager, that is the whole set of
+        // posters downloaded on arrival for a dialog nobody has opened yet.
+        // Once a panel is shown the image is normally already in cache, having
+        // been fetched by that project's card.
+        <img
+          src={poster}
+          alt={alt}
+          class="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div
           aria-hidden="true"

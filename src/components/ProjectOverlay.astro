@@ -98,7 +98,13 @@ const { projects } = Astro.props;
     for (const card of document.querySelectorAll<HTMLElement>("[data-card-viewer][data-model-src]")) {
       viewerModule.then(({ createViewer }) => {
         const viewer = createViewer(card);
-        if (viewer) cardViewers.push(viewer);
+        if (viewer) {
+          // The module can resolve after the overlay has already opened. Late
+          // card viewers must inherit the same suspended state as viewers that
+          // were ready when show() ran.
+          if (dialog!.open) viewer.suspend();
+          cardViewers.push(viewer);
+        }
       });
     }
 
@@ -113,8 +119,14 @@ const { projects } = Astro.props;
       panelViewers.set(slug, null as unknown as Viewer);
       viewerModule.then(({ createViewer }) => {
         const viewer = createViewer(host);
-        if (viewer) panelViewers.set(slug, viewer);
-        else panelViewers.delete(slug);
+        if (viewer) {
+          panelViewers.set(slug, viewer);
+          // A second navigation can happen before the shared module resolves.
+          // Do not let a viewer for a hidden panel start rendering in that case.
+          if (!dialog!.open || openSlug !== slug) viewer.suspend();
+        } else {
+          panelViewers.delete(slug);
+        }
       });
     }
 
@@ -191,7 +203,9 @@ const { projects } = Astro.props;
       lockScroll(false);
       for (const viewer of cardViewers) viewer.resume();
       if (location.hash.startsWith("#p/")) {
-        history.pushState(null, "", "#projects");
+        // Closing is cleanup, not a new navigation entry. Pushing here made
+        // Back reopen the project that had just been closed.
+        history.replaceState(null, "", "#projects");
       }
       lastFocused?.focus();
     });
