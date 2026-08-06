@@ -1,0 +1,142 @@
+---
+/**
+ * Inertial scrolling — the wheel sets a target, the page eases toward it.
+ *
+ * This is the other half of buying the models their loading time: the reveal in
+ * ScrollReveal.astro delays a card once it arrives, and this delays its arrival.
+ * A flick of the wheel that used to land instantly now glides over a few hundred
+ * milliseconds, all of it time the queue in `viewer.ts` is spending on the .glb.
+ *
+ * **The scroll position stays real.** The usual way to do this is to lock the
+ * body and translate a wrapper element, which is exactly the approach this site
+ * cannot afford: `html.dialog-open` locks scroll and pads by `--scrollbar-gap`,
+ * the project overlay is a top-layer `<dialog>`, the custom cursor is reparented
+ * into it, `#p/<slug>` deep-links through the hash, and every viewer's rendering
+ * and preloading is driven by IntersectionObserver. All of that reads the real
+ * scroll offset. So instead the wheel is intercepted, a target offset is
+ * accumulated, and `window.scrollTo` walks the *genuine* scroll position toward
+ * it each frame — observers, anchors, `position: fixed` and the scrollbar all
+ * keep working because nothing about the page's geometry has been faked.
+ *
+ * Deliberately wheel-only. Touch scrolling never fires `wheel`, so phones and
+ * tablets keep the platform's own inertia, which is better than anything
+ * reimplemented here — and keyboard scrolling stays native, so nobody driving
+ * the page from the keyboard has to wait for an animation to catch up.
+ */
+---
+
+<script>
+  const root = document.documentElement;
+
+  // Reduced motion means no glide: the wheel is left entirely alone.
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    /** How much of the remaining distance is covered per 60Hz frame. */
+    const EASE = 0.14;
+
+    let target = window.scrollY;
+    let current = target;
+    let rafId = 0;
+    let lastTime = 0;
+
+    const maxScroll = () => Math.max(0, root.scrollHeight - window.innerHeight);
+    const clamp = (value: number, hi: number) => Math.min(Math.max(value, 0), hi);
+
+    /** Wheel deltas arrive in pixels, lines or pages depending on the device. */
+    function deltaPixels(event: WheelEvent): number {
+      if (event.deltaMode === 1) return event.deltaY * 16;
+      if (event.deltaMode === 2) return event.deltaY * window.innerHeight;
+      return event.deltaY;
+    }
+
+    function stop() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      lastTime = 0;
+    }
+
+    function frame(now: number) {
+      // Clamp the delta the same way the viewer's loop does: a frame that
+      // arrives after the tab was backgrounded would otherwise jump the whole
+      // remaining distance at once, which is not a glide, it is a teleport.
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 1 / 20) : 1 / 60;
+      lastTime = now;
+
+      // Frame-rate independent, so a 120Hz display does not glide twice as fast
+      // as a 60Hz one.
+      current += (target - current) * (1 - Math.pow(1 - EASE, dt * 60));
+      if (Math.abs(target - current) < 0.5) current = target;
+
+      // `instant` overrides the `scroll-smooth` on <html>, which would otherwise
+      // try to animate every one of these steps on top of the easing above.
+      // Anchor clicks are untouched and keep that CSS smooth scrolling.
+      window.scrollTo({ top: current, behavior: "instant" });
+
+      if (current === target) {
+        stop();
+        return;
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+
+    /** A scrollable ancestor owns its own wheel — don't scroll the page instead. */
+    function overScrollable(node: EventTarget | null): boolean {
+      let el = node instanceof Element ? node : null;
+      while (el && el !== document.body && el !== root) {
+        if (el.scrollHeight > el.clientHeight) {
+          const overflow = getComputedStyle(el).overflowY;
+          if (overflow === "auto" || overflow === "scroll") return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    }
+
+    function onWheel(event: WheelEvent) {
+      // Ctrl+wheel is pinch zoom, and never ours to take.
+      if (event.ctrlKey || event.defaultPrevented) return;
+      // The overlay locks page scroll and its viewer wants the wheel for zoom.
+      if (root.classList.contains("dialog-open")) return;
+      if (overScrollable(event.target)) return;
+
+      const max = maxScroll();
+      if (max === 0) return;
+
+      event.preventDefault();
+      // Start of a gesture: adopt wherever the page actually is, in case it was
+      // moved by an anchor, the scrollbar or the keyboard since the last one.
+      if (!rafId) current = target = window.scrollY;
+      target = clamp(target + deltaPixels(event), max);
+      if (!rafId) rafId = requestAnimationFrame(frame);
+    }
+
+    // Preventing the default wheel action means a throw in here would leave the
+    // page unscrollable by wheel. Give the browser its scrolling back instead.
+    const guarded = (event: WheelEvent) => {
+      try {
+        onWheel(event);
+      } catch (error) {
+        console.error("Inertial scroll disabled:", error);
+        stop();
+        window.removeEventListener("wheel", guarded);
+      }
+    };
+    window.addEventListener("wheel", guarded, { passive: false });
+
+    // Anything that moves the page by other means — anchor links, the scrollbar,
+    // the keyboard, a restored position — is authoritative while the loop is
+    // idle. While it is running, the loop owns the position and this stands off.
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!rafId) current = target = window.scrollY;
+      },
+      { passive: true },
+    );
+
+    // The document gets shorter (a resize, or the overlay closing) and a target
+    // past the new bottom would glide to a position that no longer exists.
+    window.addEventListener("resize", () => {
+      target = clamp(target, maxScroll());
+    });
+  }
+</script>
