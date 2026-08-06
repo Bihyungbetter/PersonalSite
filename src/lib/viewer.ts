@@ -128,7 +128,7 @@ function viewportDistance(el: HTMLElement): number {
 
 function pump() {
   // Speculative work stays parked while a visitor-initiated load is running.
-  while (urgentInFlight === 0 && inFlight < MAX_IN_FLIGHT && pending.length > 0) {
+  while (urgentInFlight === 0 && pending.length > 0) {
     let best = 0;
     let bestDistance = viewportDistance(pending[0].container);
     for (let i = 1; i < pending.length; i++) {
@@ -143,6 +143,17 @@ function pump() {
         bestDistance = distance;
       }
     }
+
+    // Warm-up work gets one slot, not two. `urgentInFlight` above can only stop
+    // loads that have not started, and a GLTFLoader fetch cannot be aborted
+    // once it has — so without this, idle warm-up would have two multi-megabyte
+    // downloads already running by the time anyone clicked a project, and the
+    // overlay's own model would queue behind exactly the traffic URGENT exists
+    // to keep out of its way. Models actually approaching the viewport still
+    // get the full width.
+    const cap = pending[best].priority <= NEAR ? MAX_IN_FLIGHT : 1;
+    if (inFlight >= cap) break;
+
     const next = pending.splice(best, 1)[0];
     inFlight++;
     next.start();
@@ -641,6 +652,11 @@ export function createViewer(container: HTMLElement): Viewer | undefined {
     canvas.style.opacity = "0";
     canvas.style.transition = `opacity ${FADE_MS}ms ease`;
     poster.style.transition = `opacity ${FADE_MS}ms ease`;
+    // Force the starting opacity to be recalculated before flipping it. Setting
+    // both in one go — or even a frame apart — lets the browser coalesce them
+    // into a single style recalculation, and a transition between two values
+    // computed at the same time never runs: the canvas would simply snap in.
+    void canvas.offsetHeight;
     requestAnimationFrame(() => {
       canvas.style.opacity = "1";
       poster.style.opacity = "0";
